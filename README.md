@@ -64,9 +64,10 @@ Koyane aims to become a fast, modular, and scriptable framework for:
 ## Example Usage
 
 ```bash
-koyane generate --min 4 --max 6 --charset abc123 output_wordlist.txt
-koyane generate --min 1 --max 8 --charfile charset.txt output_wordlist.txt
+koyane generate --min-length 4 --max-length 6 --char_set abc123 output_wordlist.txt
+koyane generate --min-length 1 --max-length 8 --char_file charset.txt output_wordlist.txt
 koyane generate --mask ?L?v?l?l?l?d?d?p output_wordlist.txt
+koyane generate --min-length 4 --mask ?L?v?l?l?l?d?d?p output_wordlist.txt
 koyane analyze wordlist.txt
 ```
 ---
