@@ -22,7 +22,7 @@ The project is named after *Ame-no-Koyane*, a kami (deity) in Japanese mythology
 You can install the latest build directly from the `dist/` folder:
 
 ```bash
-pip install dist/koyaneframework-0.0.1-py3-none-any.whl
+pip install koyaneframework
 ```
 
 ## Status: Pre-Alpha
