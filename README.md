@@ -17,9 +17,9 @@ The project is named after *Ame-no-Koyane*, a kami (deity) in Japanese mythology
 ---
 ## Installation
 
-### 📦 From Local Build (Recommended)
+### 📦 From pypi (Recommended)
 
-You can install the latest build directly from the `dist/` folder:
+You can install the latest build directly with pip:
 
 ```bash
 pip install koyaneframework
