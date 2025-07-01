@@ -87,7 +87,7 @@ class ContentAnalyzer:
 
 
     def _password_min_max_info(self, word):
-        word_length =len(word)
+        word_length =len(word.strip("\n")) # because line breaks otherwise count as characters
         if self.smallestword is None or self.biggestword is None:
             self.smallestword = word_length
             self.biggestword = word_length

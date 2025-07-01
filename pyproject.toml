@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "koyaneframework"
-version = "0.0.1"
-description = ""
+version = "0.0.2"
+description = "wordlist forge & analysis toolkit"
 authors = ["Puppetm4ster"]
 readme = "README.md"
 packages = [
@@ -13,6 +13,7 @@ python = "^3.11"
 typer = "^0.16.0"
 pyfiglet = "^1.0.3"
 chardet = "^5.2.0"
+poetry-core = "^2.1.3"
 
 [tool.poetry.scripts]
 koyane = "koyaneframework.cli:app"
