@@ -1,6 +1,7 @@
 from  pathlib import Path
-from koyaneframework.utils import external_sort, SPECIAL_CHARACTERS
+from koyaneframework.core.utils.utils import external_sort, get_base_temp_dir, SPECIAL_CHARACTERS
 class ContentAnalyzer:
+
 
     file_path: Path = None
     wordlines = 0
@@ -44,8 +45,8 @@ class ContentAnalyzer:
 
     def analyze_file(self, count: bool=False, min_max:bool=False, av_length: bool=False, char_freq: bool=False, av_entropy: bool=False,dupl: bool=False, weak_pw: bool=False, perc_pw: bool=False):
         output_file = self.file_path
-        output_file = Path(__file__).resolve().parents[1] / "tmp" / "sorted_list.kyftmp"
         if dupl:
+            output_file = Path(get_base_temp_dir()) / "sorted_list.kyftmp"
             external_sort(self.file_path, output_file)
         
         with open(output_file, "r", encoding="utf-8") as file:

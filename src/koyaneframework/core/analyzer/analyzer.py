@@ -1,10 +1,7 @@
 
 from pathlib import Path
-from textwrap import wrap
-from io import StringIO
-import sys
-from koyaneframework.analyzer.analyzer_general import GeneralAnalyzer
-from koyaneframework.analyzer.analyzer_content import ContentAnalyzer
+from koyaneframework.core.analyzer.analyzer_general import GeneralAnalyzer
+from koyaneframework.core.analyzer.analyzer_content import ContentAnalyzer
 from koyaneframework.load_animation import LoadingSpinner
 
 

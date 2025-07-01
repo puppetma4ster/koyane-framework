@@ -1,7 +1,7 @@
 import itertools
 from pathlib import  Path
-from koyaneframework.utils import add_new_word_to_wordlist, create_new_wordlist
-from koyaneframework.generator.mask_interpreter import MaskInterpreter
+from koyaneframework.core.utils.utils import add_new_word_to_wordlist, create_new_wordlist
+from koyaneframework.core.generator.mask_interpreter import MaskInterpreter
 from koyaneframework.load_animation import LoadingSpinner
 
 

@@ -16,7 +16,7 @@ MaskChar("?lV") allows all lowercase letters plus all uppercase vowels.
 
 Author: puppetm4ster
 """
-import koyaneframework.utils as msk_c
+import koyaneframework.core.utils.utils as msk_c
 class MaskChar:
 
     def __init__(self, mask_character: str):

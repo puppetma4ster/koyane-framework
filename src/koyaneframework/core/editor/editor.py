@@ -1,4 +1,4 @@
-from koyaneframework.utils import external_sort
+from koyaneframework.core.utils.utils import external_sort
 from pathlib import Path
 
 

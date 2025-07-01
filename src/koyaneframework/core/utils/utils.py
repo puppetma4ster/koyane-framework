@@ -1,7 +1,7 @@
 import os
 import heapq
 from pathlib import Path
-
+import tempfile
 
 LOWER_CASE_CHARACTERS: str = "abcdefghijklmnopqrstuvwxyz"       # ?l
 UPPER_CASE_CHARACTERS: str = LOWER_CASE_CHARACTERS.upper()      # ?L
@@ -14,23 +14,17 @@ DIGITS: str = "0123456789"      # ?d
 SPECIAL_CHARACTERS_MOST_USED: str = "!@#$%^&*()-_+=?"       # ?f
 SPECIAL_CHARACTERS_POINTS: str = ".,:;"     # ?p
 SPECIAL_CHARACTERS_BRACELET: str = "()[]{}" # ?b
-
 SPECIAL_CHARACTERS: str = "<>|^°!\"§$%&/()=?´{}[]\\¸`+~*#'-_.:,;@€" #?s
 
+# Global variables to store paths after calling prepare_temp_dirs
+BASE_TEMP_DIR: Path = None
+CHUNK_TEMP_DIR: Path = None
 
 
-
-temp_dir = Path(__file__).parent / "tmp"
-output_file_rem_empty_lines = temp_dir / "removed_empty_lines.kyftmp"
-
-def external_sort(input_file, output_file, chunk_size=1_000_000):
-
-
+def external_sort(input_file: Path, output_file: Path, chunk_size=1_000_000):
     temp_files = []
-    temp_dir = Path(__file__).parent / "tmp" / "chunks"
-    temp_dir.mkdir(parents=True, exist_ok=True)
 
-    # Chunks erzeugen
+    # 1. Read and split into sorted chunks
     with open(input_file, 'r', encoding='utf-8', errors='ignore') as f:
         chunk_index = 0
         while True:
@@ -39,35 +33,31 @@ def external_sort(input_file, output_file, chunk_size=1_000_000):
                 line = f.readline()
                 if not line:
                     break
-                lines.append(line)  # exakt wie eingelesen
+                lines.append(line)
 
             if not lines:
                 break
 
             lines.sort()
-            temp_path = temp_dir / f"chunk_{chunk_index}.kyftmp"
-            with open(temp_path, 'w', encoding='utf-8') as tf:
-                tf.writelines(lines)  # exakt wie eingelesen schreiben
+            chunk_path = CHUNK_TEMP_DIR / f"chunk_{chunk_index}.kyftmp"
+            with open(chunk_path, 'w', encoding='utf-8') as tf:
+                tf.writelines(lines)
 
-            temp_files.append(temp_path)
+            temp_files.append(chunk_path)
             chunk_index += 1
 
-    # Chunks zusammenführen
+    # 2. Merge sorted chunks
     files = [open(path, 'r', encoding='utf-8', errors='ignore') for path in temp_files]
     with open(output_file, 'w', encoding='utf-8') as outf:
-        iterators = (f for f in files)  # keine Manipulation
+        iterators = (f for f in files)
         for line in heapq.merge(*iterators):
-            outf.write(line)  # direkt schreiben, keine Veränderung
+            outf.write(line)
 
+    # 3. Cleanup
     for f in files:
         f.close()
-    # deletes tmp chunk files
     for path in temp_files:
         path.unlink()
-
-
-
-
 
 
 
@@ -91,3 +81,23 @@ def remove_empty_lines(input_path: Path, output_path: Path):
         for line in infile:
             if line.strip() != '':
                 outfile.write(line)
+
+def prepare_temp_dirs():
+    """
+    Creates and prepares necessary temporary directories under the system's temp folder.
+    Sets global path variables for later use.
+    """
+    global BASE_TEMP_DIR, CHUNK_TEMP_DIR
+
+    # Base directory for temporary files related to koyane-framework
+    BASE_TEMP_DIR = Path(tempfile.gettempdir()) / "koyane-framework"
+    BASE_TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Subdirectory specifically for chunk files
+    CHUNK_TEMP_DIR = BASE_TEMP_DIR / "chunks"
+    CHUNK_TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
+def get_base_temp_dir():
+    if BASE_TEMP_DIR is None:
+        raise RuntimeError("BASE_TEMP_DIR not initialized")
+    return BASE_TEMP_DIR

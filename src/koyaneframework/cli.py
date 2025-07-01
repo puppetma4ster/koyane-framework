@@ -1,10 +1,21 @@
 import typer
 from pathlib import Path
-from koyaneframework.output_printer import show_banner
-from koyaneframework.analyzer.analyzer import print_all_info_wordlist, print_content_info_wordlist, print_general_info_wordlist
-from koyaneframework.generator.wordlist_generator import generate_mask_wordlist, generate_wordlist
-from koyaneframework.editor.editor import sort_wordlist
-from koyaneframework.word_sources import load_chars_from_input, load_words_from_file
+
+# Imports for text displays and output prints
+from koyaneframework.output.banner import get_banner_lines
+from koyaneframework.output.output_printer import print_lines, print_status, print_success, print_error, print_warning
+from koyaneframework.output.help_cli_texts import HELP_TEXTS
+from koyaneframework.enums.keys import StatusKeys, HelpKeys
+from koyaneframework.enums.Categories import StatusCategories, HelpCategories
+
+# imports for main logic
+from koyaneframework.core.analyzer.analyzer import print_all_info_wordlist, print_content_info_wordlist, print_general_info_wordlist
+from koyaneframework.core.generator.wordlist_generator import generate_mask_wordlist, generate_wordlist
+from koyaneframework.core.editor.editor import sort_wordlist
+from koyaneframework.core.utils.utils import prepare_temp_dirs
+
+# imports for helper functions
+from koyaneframework.core.utils.word_sources import load_chars_from_input, load_words_from_file
 
 app = typer.Typer()
 
@@ -14,61 +25,76 @@ def generate(
             None,
             "-m",
             "--min-length",
-            help="specifies the minimum word length."),
+            help=HELP_TEXTS[HelpCategories.GENERATE][HelpKeys.MIN_LENGTH]),
         max_length: int = typer.Option(
             None,
             "-x",
             "--max-length",
-            help="specifies the maximum word length."),
+            help=HELP_TEXTS[HelpCategories.GENERATE][HelpKeys.MAX_LENGTH]),
         mask: str = typer.Option(
             None,
             "-ms",
             "--mask",
-            help=("generate wordlist from mask."
-                  "A mask is a string consisting of segments. Each segment begins with a “?” followed by one or more letters that define the character type. Example: “?ld?d?f”."
-                  "available letter wildcards are “l” = small letter, “L” = capital letter, “v” = small vowel, “V” = capital vowel, “c” = small consonant, “C” = capital consonant, “d” = number,"
-                  " “s” = special character, “f” = most commonly used special character, ‘p’ = dot special character and “b” = bracket special character")),
+            help=HELP_TEXTS[HelpCategories.GENERATE][HelpKeys.MASK]),
         char_set: str = typer.Option(
             None,
             "-cs",
-            "--char_set",
-            help=("generate a wordlist with chars."
-                  "Example: -cs abcdef1234 || -cs \'#+:_<>abcd123\'")),
+            "--char-set",
+            help=HELP_TEXTS[HelpCategories.GENERATE][HelpKeys.CHAR_SET]),
         word_file: Path = typer.Option(
             None,
             "-cf",
-            "--char_file",
+            "--char-file",
             exists=True,
             dir_okay=False,
             file_okay=True,
-            help=("generate a wordlist with a file."
-                  "This is useful for word combinations."
-                  "The file must contain one char or word per line")),
+            help=HELP_TEXTS[HelpCategories.GENERATE][HelpKeys.WORD_FILE]),
         output_file: Path = typer.Argument(
             ...,
             exists=False,
             dir_okay=False,
             file_okay=True,
-            help="output file")
+            help=HELP_TEXTS[HelpCategories.GENERATE][HelpKeys.OUTPUT_FILE])
 ):
+    """
+        Main entry point for generating wordlists using different methods.
 
-    if mask:    # simple mask generation
-        generate_mask_wordlist(mask, output_file)
-    elif mask and min_length:   # maskgeneration with min length
+        Depending on the selected options, this command can:
+        - Generate wordlists from a character set with defined min/max length.
+        - Generate wordlists based on a structural mask pattern.
+        - Combine or transform entries from a custom word/char file.
+
+        Args:
+            min_length (int): Minimum word length (used with --char-set).
+            max_length (int): Maximum word length (used with --char-set).
+            mask (str): Pattern-based wordlist using character wildcards.
+            char_set (str): Custom set of characters to build from.
+            word_file (Path): File containing words or characters, one per line.
+            output_file (Path): File path to write the generated wordlist to.
+        """
+
+    if mask and min_length:   # maskgeneration with min length
+        print_status(StatusCategories.STATUS_GENERATOR, StatusKeys.BUILDING_MASK_WORDLIST, mask=mask)
         generate_mask_wordlist(mask, output_file, min_len=min_length)
+    elif mask:    # simple mask generation
+        print_status(StatusCategories.STATUS_GENERATOR,StatusKeys.BUILDING_MASK_WORDLIST, mask=mask)
+        generate_mask_wordlist(mask, output_file)
     elif char_set and min_length and max_length:    #char set
         if min_length > max_length:
             raise typer.BadParameter("min_length cannot be greater than max_length")
         else:
+            print_status(StatusCategories.STATUS_GENERATOR,StatusKeys.BUILDING_CHAR_WORDLIST,charset=char_set)
             chars = load_chars_from_input(char_set)
             generate_wordlist(chars, min_length, max_length, output_file)
     elif word_file and min_length and max_length:   # word file
         if min_length > max_length:
             raise typer.BadParameter("min_length cannot be greater than max_length")
         else:
+            print_status(StatusCategories.STATUS_GENERATOR, StatusKeys.BUILDING_FILE_WORDLIST, path=word_file)
             chars = load_words_from_file(word_file)
             generate_wordlist(chars, min_length, max_length, output_file)
 
+    print_success(StatusCategories.SUCCESS_GENERATOR, StatusKeys.WORDLIST_CREATED, path=output_file)
 @app.command(help="Edit existing word lists")
 def edit(
         sort: bool =typer.Option(
@@ -96,7 +122,7 @@ def edit(
         output_file = output_file.resolve()
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    show_banner()
+
     if sort:
 
         sort_wordlist(input_file,output_file)
@@ -108,12 +134,12 @@ def analyze(
             False,
             "--general",
             "-g",
-            help="Print only general info (Filename, Path, Size...)"),
+            help=HELP_TEXTS[HelpCategories.ANALYZE][HelpKeys.GENERAL]),
         content: bool = typer.Option(
             False,
             "--content",
             "-c",
-            help="Print only content info (Total words, Smallest word, Biggest word...)"
+            help=HELP_TEXTS[HelpCategories.ANALYZE][HelpKeys.CONTENT]
         ),
         file_path: Path = typer.Argument(
             ...,
@@ -121,12 +147,25 @@ def analyze(
             dir_okay=False,
             file_okay=True,
             readable=True,
-            help="Input file which is to be analyzed")
+            help=HELP_TEXTS[HelpCategories.ANALYZE][HelpKeys.FILE_PATH])
 ):
-    show_banner()
+    """
+        Main entry point for analyzing wordlists.
+
+        This command can:
+        - Analyze the entire wordlist.
+        - analyze the content or the wordlist.
+
+        Args:
+            general (bool): shows only general file infos.
+            content (int): Shows only infos about the content of the wordlist.
+            file_path (Path): Which wordlist is to be analyzed.
+            """
+
+    print_status(StatusCategories.STATUS_ANALYZER, StatusKeys.ANALYSIS_STARTED,path=file_path)
     if content and general or not content and not  general:
-        pass
         print_all_info_wordlist(file_path)
+
     elif general:
          print_general_info_wordlist(file_path)
 
@@ -139,15 +178,34 @@ def analyze(
 
 @app.command(help="search online for suitable word lists for a specified application and download them (WPA2 ...)")
 def search():
-    show_banner()
     print("This function is still in work...")
 
 
-@app.command(help="configurate this script")
-def configurate():
-    show_banner()
 
+@app.callback()
+def before(
+        quiet_mode: bool= typer.Option(
+            False,
+            "-q",
+            "--quiet-mode",
+            help=HELP_TEXTS[HelpCategories.BEFORE][HelpKeys.QUIET_MODE]
+        )
+):
+    """
+        Main entry point of the program.
+        Everything that should happen before a command is regulated here.
 
+        Here:
+        - The banner is printed onto the console.
+        Args:
+            quiet_mode: prevents banner output
+        """
+    # generate tmp dirs
+    print_status(StatusCategories.STATUS_BEFORE,StatusKeys.TEMP_DIRS)
+    prepare_temp_dirs()
+    # print ACII banner
+    if not quiet_mode:
+        print_lines(get_banner_lines(), style="red")
 
 
 

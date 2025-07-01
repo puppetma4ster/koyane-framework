@@ -7,7 +7,7 @@
   / /| |   / / __/    
  /_/ |_|  /_/_/      
  Koyane-Framework :: wordlist forge & analysis toolkit
-made by Puppetm4ster
+ made by Puppetm4ster
 ```                   
 
 
@@ -22,14 +22,14 @@ The project is named after *Ame-no-Koyane*, a kami (deity) in Japanese mythology
 You can install the latest build directly from the `dist/` folder:
 
 ```bash
-pip install dist/koyaneframework-0.0.1-py3-none-any.whl
+pip install koyaneframework
 ```
 
 ## Status: Pre-Alpha
 
 The project is in a very early stage of development. Functionality is limited and subject to change.
 This is my very first coding project so i am grateful for every improvement suggestion at **puppetma4ster@proton.me**
-
+I try to update the project once a week.
 ---
 
 ## Features
@@ -39,6 +39,7 @@ This is my very first coding project so i am grateful for every improvement sugg
 + Partial support for mask-based generation
 + Basic wordlist sorting
 + CLI interface powered by Typer
++ Basic status messages
 
 **Not yet implemented:**
 
@@ -47,6 +48,11 @@ This is my very first coding project so i am grateful for every improvement sugg
 - TUI or rich CLI frontend
 - Performance optimizations (parallelization, mmap, low-level backend)
 - Contextual generation based on target information (name, location, job, hobbies, birthday...)
+- extract and build rules out of wordlists
+- Mask generation supports wildcards such as ?d for digits,
+  and fixed character segments using ! (e.g. !A for 'A', !abc123 for custom sets).
+- Search functionality for wordlists (like `search type:ftp` in Metasploit).
+- Building a console version of Koyane with **prompt_toolkik**
 
 ---
 
@@ -64,9 +70,10 @@ Koyane aims to become a fast, modular, and scriptable framework for:
 ## Example Usage
 
 ```bash
-koyane generate --min 4 --max 6 --charset abc123 output_wordlist.txt
-koyane generate --min 1 --max 8 --charfile charset.txt output_wordlist.txt
+koyane generate --min 4 --max 6 --char-set abc123 output_wordlist.txt
+koyane generate --min 1 --max 8 --char-file charset.txt output_wordlist.txt
 koyane generate --mask ?L?v?l?l?l?d?d?p output_wordlist.txt
+koyane generate --min 5 --mask ?L?v?l?l?l?d?d?p output_wordlist.txt
 koyane analyze wordlist.txt
 ```
 ---

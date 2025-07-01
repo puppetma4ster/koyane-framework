@@ -1,0 +1,59 @@
+# Byte-compiled / optimized / compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions / shared objects
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Poetry
+poetry.lock
+.cache/
+.installed.cfg
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Test / coverage / type checking
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+.pyre/
+
+# Editor / IDE files
+.idea/
+.vscode/
+*.iml
+
+# wordlist Output
+gen/
+*.lst
+*.log
+tmp/
+logs/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+

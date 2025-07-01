@@ -72,6 +72,17 @@ files = [
 ]
 
 [[package]]
+name = "poetry-core"
+version = "2.1.3"
+description = "Poetry PEP 517 Build Backend"
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "poetry_core-2.1.3-py3-none-any.whl", hash = "sha256:2c704f05016698a54ca1d327f46ce2426d72eaca6ff614132c8477c292266771"},
+    {file = "poetry_core-2.1.3.tar.gz", hash = "sha256:0522a015477ed622c89aad56a477a57813cace0c8e7ff2a2906b7ef4a2e296a4"},
+]
+
+[[package]]
 name = "pyfiglet"
 version = "1.0.3"
 description = "Pure-python FIGlet implementation"
@@ -156,4 +167,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "68a787830a0598fe14d3e1a312250a64d14aa249ec3c0746e1fe9efa8b404fc6"
+content-hash = "743f835fe36ef0901e5417009ca64a1d6003950adef7b92cb5f243f590e0b0c0"

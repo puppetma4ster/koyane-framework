@@ -1,4 +1,4 @@
-from koyaneframework.generator.maskChar import MaskChar
+from koyaneframework.core.generator.maskChar import MaskChar
 
 
 class MaskInterpreter:
