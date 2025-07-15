@@ -1,5 +1,5 @@
 from  pathlib import Path
-from koyaneframework.core.utils.utils import external_sort, get_base_temp_dir, SPECIAL_CHARACTERS
+from koyaneframework.core.utils.utils import external_sort, get_base_temp_dir, SPECIAL_CHARACTERS, TEMP_SUFFIX
 class ContentAnalyzer:
 
 
@@ -46,7 +46,7 @@ class ContentAnalyzer:
     def analyze_file(self, count: bool=False, min_max:bool=False, av_length: bool=False, char_freq: bool=False, av_entropy: bool=False,dupl: bool=False, weak_pw: bool=False, perc_pw: bool=False):
         output_file = self.file_path
         if dupl:
-            output_file = Path(get_base_temp_dir()) / "sorted_list.kyftmp"
+            output_file = Path(get_base_temp_dir()) / f"sorted_list{TEMP_SUFFIX}"
             external_sort(self.file_path, output_file)
         
         with open(output_file, "r", encoding="utf-8") as file:

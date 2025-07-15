@@ -13,12 +13,14 @@ class StatusKeys(str, Enum):
     BUILDING_CHAR_WORDLIST = "building_char_wordlist"
     BUILDING_FILE_WORDLIST = "building_file_wordlist"
     BUILDING_MASK_WORDLIST = "building_mask_wordlist"
+    COMPRESS_WORDLIST = "compress_wordlist"
 
     # Status before
     TEMP_DIRS = "temp_dirs"
 
     # Success Generator
     WORDLIST_CREATED = "wordlist_created"
+    ARCHIVE_CREATED = "archive_created"
 
 
 class HelpKeys(str, Enum):
@@ -31,8 +33,11 @@ class HelpKeys(str, Enum):
     CHAR_SET = "char_set"
     WORD_FILE = "word_file"
     OUTPUT_FILE = "output_file"
+    COMPRESS = "compress"
 
     # edit category
+    SORT = "sort"
+    INVERT = "invert"
 
     # analyze category
     GENERAL = "general"

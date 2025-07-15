@@ -11,8 +11,8 @@ from koyaneframework.enums.Categories import StatusCategories, HelpCategories
 # imports for main logic
 from koyaneframework.core.analyzer.analyzer import print_all_info_wordlist, print_content_info_wordlist, print_general_info_wordlist
 from koyaneframework.core.generator.wordlist_generator import generate_mask_wordlist, generate_wordlist
-from koyaneframework.core.editor.editor import sort_wordlist
-from koyaneframework.core.utils.utils import prepare_temp_dirs
+from koyaneframework.core.editor.editor import EditWordList
+from koyaneframework.core.utils.utils import prepare_temp_dirs, compress_to_tarxz
 
 # imports for helper functions
 from koyaneframework.core.utils.word_sources import load_chars_from_input, load_words_from_file
@@ -31,6 +31,11 @@ def generate(
             "-x",
             "--max-length",
             help=HELP_TEXTS[HelpCategories.GENERATE][HelpKeys.MAX_LENGTH]),
+        compress_xz: bool = typer.Option(
+            False,
+            "--compress",
+            "-c",
+            help=HELP_TEXTS[HelpCategories.GENERATE][HelpKeys.COMPRESS]),
         mask: str = typer.Option(
             None,
             "-ms",
@@ -67,6 +72,7 @@ def generate(
         Args:
             min_length (int): Minimum word length (used with --char-set).
             max_length (int): Maximum word length (used with --char-set).
+            compress_xz (bool): compresses wordlist in .tar.xz archive
             mask (str): Pattern-based wordlist using character wildcards.
             char_set (str): Custom set of characters to build from.
             word_file (Path): File containing words or characters, one per line.
@@ -94,14 +100,26 @@ def generate(
             chars = load_words_from_file(word_file)
             generate_wordlist(chars, min_length, max_length, output_file)
 
-    print_success(StatusCategories.SUCCESS_GENERATOR, StatusKeys.WORDLIST_CREATED, path=output_file)
+    if compress_xz: # if compression is active
+        print_status(StatusCategories.STATUS_GENERATOR,StatusKeys.COMPRESS_WORDLIST, path=output_file)
+        compress_to_tarxz(output_file)
+        print_success(StatusCategories.SUCCESS_GENERATOR, StatusKeys.ARCHIVE_CREATED, path=output_file)
+    else:
+        print_success(StatusCategories.SUCCESS_GENERATOR, StatusKeys.WORDLIST_CREATED, path=output_file)
+
 @app.command(help="Edit existing word lists")
 def edit(
         sort: bool =typer.Option(
             False,
             "--sort",
             "-s",
-            help="sort a wordlist"),
+            help=HELP_TEXTS[HelpCategories.EDIT][HelpKeys.INVERT]),
+        invert: str = typer.Option(
+            ".*"
+            "--invert",
+            "-i",
+            help=HELP_TEXTS[HelpCategories.EDIT][HelpKeys.INVERT]
+        ),
         input_file: Path = typer.Argument(
             ...,
             exists=True,
@@ -116,16 +134,17 @@ def edit(
             file_okay=True,
             help="Output file path - default = output/wl.txt")
 ):
+
     if output_file is None:
         output_file = Path(__file__).resolve().parent / "output" / "wl.txt"
     else:
         output_file = output_file.resolve()
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-
+    wordlist = Ed
     if sort:
 
-        sort_wordlist(input_file,output_file)
+        sort_wordlist(input_file)
 
 
 @app.command(help="get detailed properties of a wordlist")
@@ -189,6 +208,11 @@ def before(
             "-q",
             "--quiet-mode",
             help=HELP_TEXTS[HelpCategories.BEFORE][HelpKeys.QUIET_MODE]
+        ),
+        version: bool = typer.Option(
+            False,
+            "--version",
+            help="Show program's version number and exit.",
         )
 ):
     """
@@ -206,6 +230,8 @@ def before(
     # print ACII banner
     if not quiet_mode:
         print_lines(get_banner_lines(), style="red")
+    if version:
+        typer.echo("0.0.2")
 
 
 

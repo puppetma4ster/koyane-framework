@@ -16,7 +16,8 @@ STATUS_MESSAGES = {            #[+] = Success [*] = Status [!] = Warning [-] = E
         "calculate_size": "Final wordlist size: {size}",
         "building_char_wordlist": "Building wordlist using the following character set: \'{charset}\'",
         "building_file_wordlist": "Building wordlist from file entries at: {path}",
-        "building_mask_wordlist": "Building wordlist using the following mask: \'{mask}\'"
+        "building_mask_wordlist": "Building wordlist using the following mask: \'{mask}\'",
+        "compress_wordlist": "Compress generated wordlist to: {path}"
     },
     "status_before": {
         "prefix": "[*]",
@@ -24,31 +25,27 @@ STATUS_MESSAGES = {            #[+] = Success [*] = Status [!] = Warning [-] = E
     },
     "success_generator": {
         "prefix": "[+]",
-        "wordlist_created": "Wordlist successfully created at: {path}"
+        "wordlist_created": "Wordlist successfully created at: {path}",
+        "archive_created": "Compressed wordlist successfully created at: {path}"
     }
 }
 
 
+
 def print_lines(lines: list[str], style: str = "none"):
-    def print_lines(lines: list[str], style: str = "none"):
-        """
-        Prints a list of text lines to the console using optional color styling.
+    """
+    Prints a list of text lines to the console using optional color styling.
 
-        Args:
-            lines (list[str]): The lines of text to print.
-            style (str, optional): Color style for the output (e.g., 'red').
-                Use "none" (default) for no styling.
+    Args:
+        lines (list[str]): The lines of text to print.
+        style (str, optional): Color style for the output (e.g., 'red').
+            Use "none" (default) for no styling.
 
-        Returns:
-            None
-        """
-        for line in lines:
-            typer.echo(typer.style(line, fg=style if style != "none" else None))
-
+    Returns:
+        None
+    """
     for line in lines:
         typer.echo(typer.style(line, fg=style if style != "none" else None))
-
-
 
 def print_status(category: str, key: str, **kwargs):
     """

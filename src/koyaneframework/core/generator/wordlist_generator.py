@@ -8,7 +8,7 @@ from koyaneframework.load_animation import LoadingSpinner
 def generate_wordlist(words, min_len, max_len, outfile: Path):
     load = LoadingSpinner(text="Generating wordlist")
     load.start()
-    create_new_wordlist(outfile)
+    outfile = create_new_wordlist(outfile)
     for i in range(min_len, max_len + 1):
         for combination in itertools.permutations(words, i):
             combined = ''.join(combination)
@@ -44,7 +44,7 @@ def generate_mask_wordlist(mask_arg: str, outfile: Path, min_len: int = None):
         lengths = list(range(min_len, mask_length + 1))
 
     # Create or overwrite the target wordlist file
-    create_new_wordlist(outfile)
+    outfile = create_new_wordlist(outfile)
 
     # Generate all possible combinations for each length
     for i in lengths:

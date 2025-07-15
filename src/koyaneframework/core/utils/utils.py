@@ -2,6 +2,8 @@ import os
 import heapq
 from pathlib import Path
 import tempfile
+import random
+import  tarfile
 
 LOWER_CASE_CHARACTERS: str = "abcdefghijklmnopqrstuvwxyz"       # ?l
 UPPER_CASE_CHARACTERS: str = LOWER_CASE_CHARACTERS.upper()      # ?L
@@ -20,8 +22,19 @@ SPECIAL_CHARACTERS: str = "<>|^°!\"§$%&/()=?´{}[]\\¸`+~*#'-_.:,;@€" #?s
 BASE_TEMP_DIR: Path = None
 CHUNK_TEMP_DIR: Path = None
 
+LIST_SUFFIX = ".klst"
+TEMP_SUFFIX = ".kyftmp"
+
 
 def external_sort(input_file: Path, output_file: Path, chunk_size=1_000_000):
+    """
+    sorts a wordlist file by Unicode.
+    Large files are split into chunks and later reassembled into a fully sorted wordlist.
+    :param input_file: the word list that is sorted
+    :param output_file: where to save the sorted list
+    :param chunk_size: how big a single chunks should be
+    :return: -
+    """
     temp_files = []
 
     # 1. Read and split into sorted chunks
@@ -39,7 +52,7 @@ def external_sort(input_file: Path, output_file: Path, chunk_size=1_000_000):
                 break
 
             lines.sort()
-            chunk_path = CHUNK_TEMP_DIR / f"chunk_{chunk_index}.kyftmp"
+            chunk_path = CHUNK_TEMP_DIR / f"chunk_{chunk_index}{TEMP_SUFFIX}"
             with open(chunk_path, 'w', encoding='utf-8') as tf:
                 tf.writelines(lines)
 
@@ -61,16 +74,36 @@ def external_sort(input_file: Path, output_file: Path, chunk_size=1_000_000):
 
 
 
-def create_new_wordlist(filepath: Path):
-    path = os.path.dirname(filepath) or "."
+def create_new_wordlist(filepath: Path, temp_wordlist:bool = False) -> Path:
+    """
+    creates a new empty list file
+    :param filepath: where list is saved
+    :return: -
+    """
+    if temp_wordlist:
+        filepath = filepath.with_suffix(TEMP_SUFFIX).resolve()
+    else:
+        filepath = filepath.with_suffix(LIST_SUFFIX).resolve()
 
-    if os.path.isdir(path):
-        with open(filepath, 'w', encoding="utf-8"):
-            pass
+    directory = filepath.parent
 
+    if not directory.is_dir():
+        raise FileNotFoundError(f"Directory does not exist: {directory}")
+
+    # Create empty wordlist
+    with open(filepath, 'w', encoding='utf-8'):
+        pass
+
+    return  filepath
 
 
 def add_new_word_to_wordlist(filepath: Path, word: str):
+    """
+    adds a sting to an existing list
+    :param filepath: where list is saved
+    :param word: which word should be added to the list
+    :return: -
+    """
     with open(filepath, "a", encoding="utf-8") as file:
         file.write(f"{word}\n")
 
@@ -97,7 +130,35 @@ def prepare_temp_dirs():
     CHUNK_TEMP_DIR = BASE_TEMP_DIR / "chunks"
     CHUNK_TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
+def compress_to_tarxz(source: Path, delete_file: bool = True):
+    """
+    Compresses a list into a tar.xz archive.
+    The archive has the name of the file and is stored at the path where the list was saved
+    :param source: the path to the file and the storage path of the archive
+    :param delete_file: if file is deleted afterward compression
+    :raises:
+    """
+    source = Path(source).with_suffix(LIST_SUFFIX).resolve()
+    if not source.is_file():
+        raise ValueError()
+
+    # Archive path: same directory, filename.tar.xz
+    archive_path = source.parent / (source.name + ".tar.xz")
+
+    with tarfile.open(archive_path, 'w:xz') as tar:
+        tar.add(source, arcname=source.name)  # Only include the file name in the archive
+
+    if delete_file:
+        source.unlink()
+
 def get_base_temp_dir():
+    """
+    Method only for returning the temp path    :return:
+    """
     if BASE_TEMP_DIR is None:
         raise RuntimeError("BASE_TEMP_DIR not initialized")
     return BASE_TEMP_DIR
+
+def random_temp_number():
+    random_num = random.randint(1_000_000, 9_999_999)
+    print(random_num)

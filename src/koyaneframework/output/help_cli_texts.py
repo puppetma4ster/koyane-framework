@@ -5,6 +5,7 @@ HELP_TEXTS = {
     "generate": {
         "min_length": "Specifies the minimum word length.",
         "max_length": "Specifies the maximum word length.",
+        "compress": "compresses wordlist into a .tar.xz archive after generation",
         "mask_help": (
             "Generate wordlist from a pattern mask. "
             "A mask consists of segments starting with '?' followed by letters that define the character type. "
@@ -30,6 +31,10 @@ HELP_TEXTS = {
         "output_file": "Output file path for the generated wordlist."
     },
     "edit": {
+        "sort": "Sorts a wordlist with unicode",
+        "invert": ("Inverts the words in the word list."
+                   "If no PATTERN is specified, all words are inverted."
+                   "If PATTERN is specified (as a regular expression), only the words that match this expression are inverted.")
 
     },
     "analyze": {
