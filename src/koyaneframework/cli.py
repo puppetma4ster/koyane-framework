@@ -115,10 +115,19 @@ def edit(
             "-s",
             help=HELP_TEXTS[HelpCategories.EDIT][HelpKeys.INVERT]),
         invert: str = typer.Option(
-            ".*"
-            "--invert",
+            ".*",
             "-i",
+            "--invert",
             help=HELP_TEXTS[HelpCategories.EDIT][HelpKeys.INVERT]
+        ),
+        subtract_file: Path = typer.Option(
+            None,
+            "-sF",
+            "--subtract-file",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            file_okay=True
         ),
         input_file: Path = typer.Argument(
             ...,
@@ -141,12 +150,15 @@ def edit(
         output_file = output_file.resolve()
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    wordlist = Ed
+    wordlist = EditWordList(input_file, output_file)
+    if subtract_file:
+       wordlist.remove_words_from_list(subtract_file)
+    if invert:
+        pass
     if sort:
+        wordlist.sort_wordlist()
 
-        sort_wordlist(input_file)
-
-
+    wordlist.flush_finished_wordlist()
 @app.command(help="get detailed properties of a wordlist")
 def analyze(
         general: bool =typer.Option(

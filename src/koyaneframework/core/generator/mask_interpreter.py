@@ -13,15 +13,28 @@ class MaskInterpreter:
         inside_mask = False
 
         for char in self.mask:
-            if char == "?":
-                if inside_mask:  # add built segment
-                    self.mask_segments.append(MaskChar(segment))
-                    segment = "?"
+            if char == "?" or char == "!":
+                if inside_mask: # add built segment
+                    if char == "!":
+                        if segment.startswith("?"):  # add last segment
+                            self.mask_segments.append(MaskChar(segment, True))
+                        elif segment.startswith("!"):
+                            self.mask_segments.append(MaskChar(segment, False))
+                        segment = "!"
+                    else:
+                        if segment.startswith("?"):  # add last segment
+                            self.mask_segments.append(MaskChar(segment, True))
+                        elif segment.startswith("!"):
+                            self.mask_segments.append(MaskChar(segment, False))
+                        segment = "?"
                 else:
-                    segment = "?"
+                    segment = char
                     inside_mask = True
             else:
                 segment += char
 
         if segment.startswith("?"):  # add last segment
-            self.mask_segments.append(MaskChar(segment))
+            self.mask_segments.append(MaskChar(segment, True))
+        elif segment.startswith("!"):
+            self.mask_segments.append(MaskChar(segment, False))
+

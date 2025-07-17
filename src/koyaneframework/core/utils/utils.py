@@ -161,4 +161,4 @@ def get_base_temp_dir():
 
 def random_temp_number():
     random_num = random.randint(1_000_000, 9_999_999)
-    print(random_num)
+    return random_num

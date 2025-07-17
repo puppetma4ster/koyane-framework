@@ -4,17 +4,15 @@ from koyaneframework.core.utils.utils import external_sort, create_new_wordlist,
 from pathlib import Path
 import re
 
-#TEMP_PATH  = Path(get_base_temp_dir()) / f"temp_{TEMP_SUFFIX}"
 class EditWordList:
 
     def __init__(self, input_file : Path, output_file: Path):
-        self.input_file = input_file
         self.output_file = output_file
 
         self.temp_path = _generate_temp_path_file()   #  Path with random Number
-        self._copy_file_to_temp(input_file)
+        shutil.copy(input_file, self.temp_path)
 
-    def sort_wordlist(self, input_file: Path):
+    def sort_wordlist(self):
         new_temp_file = _generate_temp_path_file()
         external_sort(self.temp_path, new_temp_file)
 
@@ -46,14 +44,58 @@ class EditWordList:
         self.temp_path.unlink()
         self.temp_path =  new_temp_file
 
-    def remove_words_from_list(self):
+    def remove_words_from_list(self, remove_wordlist: Path):
+        """
+        subtracts all words of a given wordlist from the instance wordlist
+
+        :param remove_wordlist: words which should be deleted
+        :return: -
+        """
+
+        # -------------------- SORTING --------------------
+        sorted_current_wl_path = _generate_temp_path_file()
+        external_sort(self.temp_path, sorted_current_wl_path)# sort wordlist which will be edited
+
+        sorted_remove_wl_path = _generate_temp_path_file()  # path for sorted remove wordlist
+        external_sort(remove_wordlist, sorted_remove_wl_path)
+
+        new_temp_file = _generate_temp_path_file()
+        # -------------------- SUBTRACTING --------------------
+        create_new_wordlist(new_temp_file)
+
+        with open(sorted_current_wl_path, "r", encoding="utf-8") as minuend_wl, \
+            open(sorted_remove_wl_path, "r", encoding="utf8") as subtrahend_wl, \
+            open(new_temp_file, "w", encoding="utf-8") as new_wl:
+
+            word_minuend = minuend_wl.readline()
+            word_subtrahend = subtrahend_wl.readline()
+
+            while word_minuend and word_subtrahend:
+                word_minuend = word_minuend.rstrip("\n")
+                word_subtrahend = word_subtrahend.rstrip("\n")
+                if word_minuend < word_subtrahend:
+                    add_new_word_to_wordlist(new_temp_file, word_minuend)
+                    word_minuend =  minuend_wl.readline()
+                elif word_minuend == word_subtrahend:
+                    word_minuend = minuend_wl.readline()
+                    word_subtrahend = subtrahend_wl.readline()
+                else:   # if minuend word ist bigger than subtrahend word
+                    word_subtrahend = subtrahend_wl.readline()
+
+            while word_minuend: # copy remaining lines from a
+                add_new_word_to_wordlist(new_temp_file, word_minuend)
+                word_minuend =  minuend_wl.readline()
+
+            # -------------------- Clean up --------------------
+            self.temp_path.unlink()
+            sorted_current_wl_path.unlink()
+            sorted_remove_wl_path.unlink()
+
+            self.temp_path = new_temp_file
 
 
 
-
-
-
-    def flush_temp_wordlist(self):
+    def flush_finished_wordlist(self):
 
         if not self.temp_path.is_file():
             raise FileNotFoundError()
@@ -71,6 +113,9 @@ class EditWordList:
 
 
 def _generate_temp_path_file() -> Path:
-    temp_nr = random_temp_number()
-    temp_path = Path(get_base_temp_dir()) / f"temp_edit_{temp_nr}{TEMP_SUFFIX}"
-    return temp_path
+
+    while True:
+        temp_nr = random_temp_number()
+        temp_path = Path(get_base_temp_dir()) / f"temp_edit_{temp_nr}{TEMP_SUFFIX}"
+        if not temp_path.is_file():     # if the file already exists
+            return temp_path
