@@ -1,5 +1,6 @@
 import shutil
 
+from koyaneframework.core.generator.mask_interpreter import MaskInterpreter
 from koyaneframework.core.utils.utils import external_sort, create_new_wordlist, add_new_word_to_wordlist,get_base_temp_dir, TEMP_SUFFIX, LIST_SUFFIX, random_temp_number
 from pathlib import Path
 import re
@@ -15,6 +16,27 @@ class EditWordList:
     def sort_wordlist(self):
         new_temp_file = _generate_temp_path_file()
         external_sort(self.temp_path, new_temp_file)
+
+        self.temp_path.unlink()
+        self.temp_path = new_temp_file
+
+    def remove_words_from_mask(self, mask: str):
+        """
+        Removes all words from the current temporary wordlist file (self.temp_path)
+        that match the given mask. Rewrites the wordlist without matching entries.
+        """
+        new_temp_file: Path = _generate_temp_path_file()
+        create_new_wordlist(new_temp_file)
+
+        mask = MaskInterpreter(mask)
+
+        with open(self.temp_path, "r", encoding="utf-8") as old_wl, \
+                open(new_temp_file, "w", encoding="utf-8") as new_wl:
+
+            for line in old_wl:
+                word = line.rstrip("\n")
+                if not mask.matches_word(word):
+                    add_new_word_to_wordlist(new_temp_file, word)
 
         self.temp_path.unlink()
         self.temp_path = new_temp_file

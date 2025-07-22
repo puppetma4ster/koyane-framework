@@ -7,17 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 ---
 
-## [0.1] - 2025-06-30
+## 2025-06-30
 
 
 ### Added
-- Added Version Flag
-- compressing wordlists after generation
-- generated wordlists have now .klst as suffix
+- method for comparing masks with words
+- method which deletes words that match a mask
+- getter method for permitted_characters in a mask char
 
-### Changed
-
-
-
-### Fixed
 

@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/koyaneframework.iml" filepath="$PROJECT_DIR$/.idea/koyaneframework.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/koyaneframework2.iml" filepath="$PROJECT_DIR$/.idea/koyaneframework2.iml" />
     </modules>
   </component>
 </project>

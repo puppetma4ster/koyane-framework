@@ -91,3 +91,6 @@ class MaskChar:
                     continue
                 self.permitted_characters += char
 
+
+    def get_permitted_characters(self):
+        return self.permitted_characters
