@@ -9,16 +9,19 @@ class EditWordList:
 
     def __init__(self, input_file : Path, output_file: Path):
         self.output_file = output_file
+        self.isSorted = False
 
         self.temp_path = _generate_temp_path_file()   #  Path with random Number
         shutil.copy(input_file, self.temp_path)
 
     def sort_wordlist(self):
-        new_temp_file = _generate_temp_path_file()
-        external_sort(self.temp_path, new_temp_file)
+        if not self.isSorted:
+            new_temp_file = _generate_temp_path_file()
+            external_sort(self.temp_path, new_temp_file)
 
-        self.temp_path.unlink()
-        self.temp_path = new_temp_file
+            self.temp_path.unlink()
+            self.temp_path = new_temp_file
+            self.isSorted = True
 
     def remove_words_from_mask(self, mask: str):
         """
@@ -76,7 +79,8 @@ class EditWordList:
 
         # -------------------- SORTING --------------------
         sorted_current_wl_path = _generate_temp_path_file()
-        external_sort(self.temp_path, sorted_current_wl_path)# sort wordlist which will be edited
+        if not self.isSorted:
+            external_sort(self.temp_path, sorted_current_wl_path)# sort wordlist which will be edited
 
         sorted_remove_wl_path = _generate_temp_path_file()  # path for sorted remove wordlist
         external_sort(remove_wordlist, sorted_remove_wl_path)

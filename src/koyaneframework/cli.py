@@ -10,9 +10,9 @@ from koyaneframework.enums.Categories import StatusCategories, HelpCategories
 
 # imports for main logic
 from koyaneframework.core.analyzer.analyzer import print_all_info_wordlist, print_content_info_wordlist, print_general_info_wordlist
-from koyaneframework.core.generator.wordlist_generator import generate_mask_wordlist, generate_wordlist
+from koyaneframework.core.generator.wordlist_generator import generate_mask_wordlist, generate_wordlist, calculate_mask_storage
 from koyaneframework.core.editor.editor import EditWordList
-from koyaneframework.core.utils.utils import prepare_temp_dirs, compress_to_tarxz
+from koyaneframework.core.utils.utils import prepare_temp_dirs, compress_to_tarxz, format_bytes
 
 # imports for helper functions
 from koyaneframework.core.utils.word_sources import load_chars_from_input, load_words_from_file
@@ -80,9 +80,13 @@ def generate(
         """
 
     if mask and min_length:   # maskgeneration with min length
+        size, bytes = calculate_mask_storage(mask, min_len=min_length)
+        print_status(StatusCategories.STATUS_GENERATOR, StatusKeys.WORDLIST_STATS, count=size, size=format_bytes(bytes))
         print_status(StatusCategories.STATUS_GENERATOR, StatusKeys.BUILDING_MASK_WORDLIST, mask=mask)
         generate_mask_wordlist(mask, output_file, min_len=min_length)
     elif mask:    # simple mask generation
+        size, bytes = calculate_mask_storage(mask, min_len=min_length)
+        print_status(StatusCategories.STATUS_GENERATOR, StatusKeys.WORDLIST_STATS, count=size, size=format_bytes(bytes))
         print_status(StatusCategories.STATUS_GENERATOR,StatusKeys.BUILDING_MASK_WORDLIST, mask=mask)
         generate_mask_wordlist(mask, output_file)
     elif char_set and min_length and max_length:    #char set
@@ -120,15 +124,22 @@ def edit(
             "--invert",
             help=HELP_TEXTS[HelpCategories.EDIT][HelpKeys.INVERT]
         ),
-        subtract_file: Path = typer.Option(
+        remove_file: Path = typer.Option(
             None,
-            "-sF",
-            "--subtract-file",
+            "-rF",
+            "--remove-file",
             exists=True,
             dir_okay=False,
             readable=True,
-            file_okay=True
+            file_okay=True,
+            help=HELP_TEXTS[HelpCategories.EDIT][HelpKeys.REMOVE_FILE]
         ),
+        remove_mask: str = typer.Option(
+            None,
+            "-rM",
+            "--remove-mask",
+            help=HELP_TEXTS[HelpCategories.EDIT][HelpKeys.REMOVE_MASK]
+                ),
         input_file: Path = typer.Argument(
             ...,
             exists=True,
@@ -151,8 +162,10 @@ def edit(
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     wordlist = EditWordList(input_file, output_file)
-    if subtract_file:
-       wordlist.remove_words_from_list(subtract_file)
+    if remove_file:
+       wordlist.remove_words_from_list(remove_file)
+    if remove_mask:
+        wordlist.remove_words_from_mask(remove_mask)
     if invert:
         pass
     if sort:
@@ -235,6 +248,7 @@ def before(
         - The banner is printed onto the console.
         Args:
             quiet_mode: prevents banner output
+            version: shows program's version number and exit.
         """
     # generate tmp dirs
     print_status(StatusCategories.STATUS_BEFORE,StatusKeys.TEMP_DIRS)

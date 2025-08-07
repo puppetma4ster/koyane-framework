@@ -26,7 +26,7 @@ LIST_SUFFIX = ".klst"
 TEMP_SUFFIX = ".kyftmp"
 
 
-def external_sort(input_file: Path, output_file: Path, chunk_size=1_000_000):
+def external_sort(input_file: Path, output_file: Path, chunk_size=100_000):
     """
     sorts a wordlist file by Unicode.
     Large files are split into chunks and later reassembled into a fully sorted wordlist.
@@ -114,6 +114,14 @@ def remove_empty_lines(input_path: Path, output_path: Path):
         for line in infile:
             if line.strip() != '':
                 outfile.write(line)
+
+def format_bytes(size):
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if size < 1024:
+            return f"{size:.2f} {unit}"
+        size /= 1024
+    return f"{size:.2f} PB"
+
 
 def prepare_temp_dirs():
     """

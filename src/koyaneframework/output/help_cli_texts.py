@@ -34,7 +34,11 @@ HELP_TEXTS = {
         "sort": "Sorts a wordlist with unicode",
         "invert": ("Inverts the words in the word list."
                    "If no PATTERN is specified, all words are inverted."
-                   "If PATTERN is specified (as a regular expression), only the words that match this expression are inverted.")
+                   "If PATTERN is specified (as a regular expression), only the words that match this expression are inverted."),
+        "remove_file": ("Removes all entries from the current wordlist that also appear in the specified <file>."
+                        "The file must be a plain text list with one word per line."),
+        "remove_mask": ("Removes all entries from the wordlist that match the given mask pattern."
+                        "The mask must follow the Koyane-Framework mask syntax (?d?d?d -> removes any 3-digit number).")
 
     },
     "analyze": {

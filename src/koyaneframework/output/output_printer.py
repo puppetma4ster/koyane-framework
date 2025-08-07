@@ -17,6 +17,7 @@ STATUS_MESSAGES = {            #[+] = Success [*] = Status [!] = Warning [-] = E
         "building_char_wordlist": "Building wordlist using the following character set: \'{charset}\'",
         "building_file_wordlist": "Building wordlist from file entries at: {path}",
         "building_mask_wordlist": "Building wordlist using the following mask: \'{mask}\'",
+        "wordlist_stats": "The wordlist contains {count} entries and is approximately {size} bytes in size",
         "compress_wordlist": "Compress generated wordlist to: {path}"
     },
     "status_before": {

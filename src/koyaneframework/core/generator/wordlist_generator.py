@@ -59,11 +59,33 @@ def generate_mask_wordlist(mask_arg: str, outfile: Path, min_len: int = None):
 
 
 # work in progress
-def calculate_mask_storage(mask: MaskInterpreter, min_len: int, max_len: int):
+def calculate_mask_storage(mask: str, min_len: int = None):
+    """
+    Calculates the total number of combinations for the mask starting from min_len
+    and estimates the file size in bytes assuming each line ends with a newline.
+
+    :param mask: MaskInterpreter object containing mask segments
+    :param min_len: minimum length of lines to consider (defaults to full mask length)
+    :return: tuple(total_combinations, estimated_size_bytes)
+    """
+    mask = MaskInterpreter(mask)
+    MAX_LEN = len(mask.mask_segments)
+    if min_len is None:
+        min_len = MAX_LEN
+
     total_combinations = 0
-    for length in range(min_len, max_len + 1):
+
+    for length in range(min_len, MAX_LEN + 1):
         combinations = 1
         for seg in mask.mask_segments[:length]:
             combinations *= len(seg.permitted_characters)
+
         total_combinations += combinations
-    return total_combinations
+
+    # Assume average line length equals min_len for size estimation
+    avg_line_length = min_len if min_len else MAX_LEN
+
+    # Add 1 byte for newline character
+    estimated_bytes = total_combinations * (avg_line_length + 1)
+
+    return total_combinations, estimated_bytes

@@ -14,6 +14,7 @@ class StatusKeys(str, Enum):
     BUILDING_FILE_WORDLIST = "building_file_wordlist"
     BUILDING_MASK_WORDLIST = "building_mask_wordlist"
     COMPRESS_WORDLIST = "compress_wordlist"
+    WORDLIST_STATS = "wordlist_stats"
 
     # Status before
     TEMP_DIRS = "temp_dirs"
@@ -38,6 +39,8 @@ class HelpKeys(str, Enum):
     # edit category
     SORT = "sort"
     INVERT = "invert"
+    REMOVE_FILE = "remove_file"
+    REMOVE_MASK = "remove_mask"
 
     # analyze category
     GENERAL = "general"
