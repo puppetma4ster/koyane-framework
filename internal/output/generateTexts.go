@@ -40,12 +40,14 @@ If PATTERN is specified (as a regular expression), only the words that match thi
 }
 
 var AnalyzeHelpTexts = map[string]string{
-	"use":     "Analyze",
-	"short":   "Analyze wordlists",
-	"long":    "...",
-	"all":     "Prints all gathered word list information",
-	"general": "Prints all collected word list information belonging to the General Information category.",
-	"content": "Prints all collected word list information belonging to the Content Information category.",
+	"use":      "analyze",
+	"short":    "Analyze wordlists",
+	"long":     "...",
+	"all":      "Prints all gathered word list information",
+	"general":  "Prints all collected word list information belonging to the General Information category.",
+	"content":  "Prints all collected word list information belonging to the Content Information category.",
+	"stats":    "Prints all gathered statistics about the wordlist",
+	"saveFile": "Creates a file with the output print.",
 }
 
 var GenerateRootHelpTexts = map[string]string{

@@ -11,39 +11,53 @@ import (
 )
 
 type AnalyzerContent struct {
-	WordLines            uint64
-	SmallestWordLen      int
-	BiggestWordLen       int
-	AvWordLen            float64
-	CharCount            map[rune]uint64
-	AvEntropy            float64
-	HasDuplicates        bool
-	DuplicateWords       []string
-	WordsWDigits         float32
-	WordsWUpper          float32
-	WordsWSpecChar       float32
-	WordsWDigitUpper     float32
-	WordsWDigitSpec      float32
-	WordsWUpperSpec      float32
-	WordsWDigitUpperSpec float32
+	WordLines                   uint64
+	SmallestWordLen             int
+	BiggestWordLen              int
+	AvWordLen                   float64
+	CharCount                   map[rune]uint64
+	AvEntropy                   float64
+	HasDuplicates               bool
+	DuplicateWords              []string
+	WordsWDigits                float32
+	WordsWDigitsPercent         float32
+	WordsWUpper                 float32
+	WordsWUpperPercent          float32
+	WordsWSpecChar              float32
+	WordsWSpecCharPercent       float32
+	WordsWDigitUpper            float32
+	WordsWDigitUpperPercent     float32
+	WordsWDigitSpec             float32
+	WordsWDigitSpecPercent      float32
+	WordsWUpperSpec             float32
+	WordsWUpperSpecPercent      float32
+	WordsWDigitUpperSpec        float32
+	WordsWDigitUpperSpecPercent float32
 }
 
 func NewAnalyzerContent(inputPath string, count, minMax, avLength, charFreq, avEntropy, duplicate, percStats bool) (*AnalyzerContent, error) {
 	var wordlist AnalyzerContent = AnalyzerContent{
-		WordLines:            0,
-		SmallestWordLen:      0,
-		BiggestWordLen:       0,
-		AvWordLen:            0.0,
-		CharCount:            make(map[rune]uint64),
-		HasDuplicates:        false,
-		DuplicateWords:       []string{},
-		WordsWDigits:         0,
-		WordsWUpper:          0,
-		WordsWSpecChar:       0,
-		WordsWDigitUpper:     0,
-		WordsWDigitSpec:      0,
-		WordsWUpperSpec:      0,
-		WordsWDigitUpperSpec: 0,
+		WordLines:                   0,
+		SmallestWordLen:             0,
+		BiggestWordLen:              0,
+		AvWordLen:                   0.0,
+		CharCount:                   make(map[rune]uint64),
+		HasDuplicates:               false,
+		DuplicateWords:              []string{},
+		WordsWDigits:                0.0,
+		WordsWDigitsPercent:         0.0,
+		WordsWUpper:                 0.0,
+		WordsWUpperPercent:          0.0,
+		WordsWSpecChar:              0.0,
+		WordsWSpecCharPercent:       0.0,
+		WordsWDigitUpper:            0.0,
+		WordsWDigitUpperPercent:     0.0,
+		WordsWDigitSpec:             0.0,
+		WordsWDigitSpecPercent:      0.0,
+		WordsWUpperSpec:             0.0,
+		WordsWUpperSpecPercent:      0.0,
+		WordsWDigitUpperSpec:        0.0,
+		WordsWDigitUpperSpecPercent: 0.0,
 	}
 	absolutePath, err := utils.ResolvePath(inputPath)
 	if err != nil {
@@ -116,20 +130,27 @@ func NewAnalyzerContent(inputPath string, count, minMax, avLength, charFreq, avE
 }
 func NewContentDummy() *AnalyzerContent {
 	return &AnalyzerContent{
-		WordLines:            0,
-		SmallestWordLen:      0,
-		BiggestWordLen:       0,
-		AvWordLen:            0.0,
-		CharCount:            make(map[rune]uint64),
-		HasDuplicates:        false,
-		DuplicateWords:       []string{},
-		WordsWDigits:         0,
-		WordsWUpper:          0,
-		WordsWSpecChar:       0,
-		WordsWDigitUpper:     0,
-		WordsWDigitSpec:      0,
-		WordsWUpperSpec:      0,
-		WordsWDigitUpperSpec: 0,
+		WordLines:                   0,
+		SmallestWordLen:             0,
+		BiggestWordLen:              0,
+		AvWordLen:                   0.0,
+		CharCount:                   make(map[rune]uint64),
+		HasDuplicates:               false,
+		DuplicateWords:              []string{},
+		WordsWDigits:                0.0,
+		WordsWDigitsPercent:         0.0,
+		WordsWUpper:                 0.0,
+		WordsWUpperPercent:          0.0,
+		WordsWSpecChar:              0.0,
+		WordsWSpecCharPercent:       0.0,
+		WordsWDigitUpper:            0.0,
+		WordsWDigitUpperPercent:     0.0,
+		WordsWDigitSpec:             0.0,
+		WordsWDigitSpecPercent:      0.0,
+		WordsWUpperSpec:             0.0,
+		WordsWUpperSpecPercent:      0.0,
+		WordsWDigitUpperSpec:        0.0,
+		WordsWDigitUpperSpecPercent: 0.0,
 	}
 }
 
@@ -203,28 +224,30 @@ func (wordlist *AnalyzerContent) wordStats(word string) {
 		}
 	}
 	if digit && upper && specsign {
-		wordlist.WordsWDigitUpperSpec += 1
+		wordlist.WordsWDigitUpperSpec += 1.0
 	} else if digit && upper {
-		wordlist.WordsWDigitUpper += 1
+		wordlist.WordsWDigitUpper += 1.0
 	} else if digit && specsign {
-		wordlist.WordsWUpperSpec += 1
+		wordlist.WordsWDigitSpec += 1.0
+	} else if upper && specsign {
+		wordlist.WordsWUpperSpec += 1.0
 	} else if digit {
-		wordlist.WordsWDigits += 1
+		wordlist.WordsWDigits += 1.0
 	} else if upper {
-		wordlist.WordsWUpper += 1
+		wordlist.WordsWUpper += 1.0
 	} else if specsign {
-		wordlist.WordsWSpecChar += 1
+		wordlist.WordsWSpecChar += 1.0
 	}
 }
 
 func (wordlist *AnalyzerContent) statsInPercent() {
 	const percentMultiplier float32 = 100
-	wordlist.WordsWDigits = (wordlist.WordsWDigits / float32(wordlist.WordLines)) * percentMultiplier
-	wordlist.WordsWUpper = (wordlist.WordsWUpper / float32(wordlist.WordLines)) * percentMultiplier
-	wordlist.WordsWSpecChar = (wordlist.WordsWSpecChar / float32(wordlist.WordLines)) * percentMultiplier
-	wordlist.WordsWDigitUpper = (wordlist.WordsWDigitUpper / float32(wordlist.WordLines)) * percentMultiplier
-	wordlist.WordsWDigitSpec = (wordlist.WordsWDigitSpec / float32(wordlist.WordLines)) * percentMultiplier
-	wordlist.WordsWUpperSpec = (wordlist.WordsWUpperSpec / float32(wordlist.WordLines)) * percentMultiplier
-	wordlist.WordsWDigitUpperSpec = (wordlist.WordsWDigitUpperSpec / float32(wordlist.WordLines)) * percentMultiplier
+	wordlist.WordsWDigitsPercent = (wordlist.WordsWDigits / float32(wordlist.WordLines)) * percentMultiplier
+	wordlist.WordsWUpperPercent = (wordlist.WordsWUpper / float32(wordlist.WordLines)) * percentMultiplier
+	wordlist.WordsWSpecCharPercent = (wordlist.WordsWSpecChar / float32(wordlist.WordLines)) * percentMultiplier
+	wordlist.WordsWDigitUpperPercent = (wordlist.WordsWDigitUpper / float32(wordlist.WordLines)) * percentMultiplier
+	wordlist.WordsWDigitSpecPercent = (wordlist.WordsWDigitSpec / float32(wordlist.WordLines)) * percentMultiplier
+	wordlist.WordsWUpperSpecPercent = (wordlist.WordsWUpperSpec / float32(wordlist.WordLines)) * percentMultiplier
+	wordlist.WordsWDigitUpperSpecPercent = (wordlist.WordsWDigitUpperSpec / float32(wordlist.WordLines)) * percentMultiplier
 
 }

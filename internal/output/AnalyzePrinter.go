@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dustin/go-humanize"
 	"github.com/puppetma4ster/koyane-framework/internal/core/analyzer"
 	"github.com/puppetma4ster/koyane-framework/internal/core/utils"
 )
@@ -22,15 +23,15 @@ func NewAnalyzePrinter(generalAnalyzer *analyzer.GeneralAnalyzer, contentAnalyze
 	statsText := &strings.Builder{}
 
 	contentText.WriteString("\n")
-	contentText.WriteString("---------- Content Information ----------")
+	contentText.WriteString("-------------------- Content Information --------------------")
 	contentText.WriteString("\n")
 
 	generalText.WriteString("\n")
-	generalText.WriteString("---------- General Information ----------")
+	generalText.WriteString("-------------------- General Information --------------------")
 	generalText.WriteString("\n")
 
 	statsText.WriteString("\n")
-	statsText.WriteString("---------- Wordlist Stats ----------")
+	statsText.WriteString("-------------------- Wordlist Stats --------------------")
 	statsText.WriteString("\n")
 
 	return &AnalyzePrinter{
@@ -58,6 +59,11 @@ func (wordlist *AnalyzePrinter) PrintAllContentInfo() {
 	wordlist.PrintAvWordLen()
 	wordlist.PrintAvEntropy()
 	wordlist.PrintHasDuplicates()
+}
+func (wordlist *AnalyzePrinter) PrintAllStatsInfo() {
+	wordlist.PrintWordStats()
+	wordlist.PrintDuplicateWords()
+	wordlist.PrintCharStatistics()
 }
 
 // general words
@@ -119,11 +125,29 @@ func (wordlist *AnalyzePrinter) PrintHasDuplicates() {
 
 // stats words
 func (wordlist *AnalyzePrinter) PrintDuplicateWords() {
-	printDotted("Average Word Length", wordlist.content.AvWordLen)
+	var result interface{}
+	if len(wordlist.content.DuplicateWords) == 0 {
+		result = "no duplicates in wordlist"
+	} else {
+		result = strings.Join(wordlist.content.DuplicateWords, ",")
+	}
+	wordlist.statsText.WriteString(printDotted("Duplicate words", result))
+
 }
 
 func (wordlist *AnalyzePrinter) PrintCharStatistics() {
-	printDotted("Average Word Length", wordlist.content.AvWordLen)
+	wordlist.statsText.WriteString(printDotted("Character statistics", "\n"))
+	wordlist.statsText.WriteString(printRuneMapColumns(wordlist.content.CharCount, 6))
+}
+
+func (wordlist *AnalyzePrinter) PrintWordStats() {
+	wordlist.statsText.WriteString(printDotted("Contains digits", wordlist.content.WordsWDigitsPercent, "%"))
+	wordlist.statsText.WriteString(printDotted("Contains upper case letters", wordlist.content.WordsWUpperPercent, "%"))
+	wordlist.statsText.WriteString(printDotted("Contains special characters", wordlist.content.WordsWSpecCharPercent, "%"))
+	wordlist.statsText.WriteString(printDotted("Contains upper case & digits", wordlist.content.WordsWDigitUpperPercent, "%"))
+	wordlist.statsText.WriteString(printDotted("Contains digits & special characters", wordlist.content.WordsWDigitSpecPercent, "%"))
+	wordlist.statsText.WriteString(printDotted("Contains upper case & special characters", wordlist.content.WordsWUpperSpecPercent, "%"))
+	wordlist.statsText.WriteString(printDotted("Contains Digits Upper, Case & special characters", wordlist.content.WordsWDigitUpperSpecPercent, "%"))
 }
 
 func (wordlist *AnalyzePrinter) FlushGeneral() {
@@ -138,11 +162,60 @@ func (wordlist *AnalyzePrinter) FlushStats() {
 	fmt.Println(wordlist.statsText.String())
 }
 
-func printDotted(label string, value interface{}) string {
-	totalWidth := 25
+func printDotted(label string, value interface{}, unit ...string) string {
+	totalWidth := 40
 	dots := totalWidth - len(label)
 	if dots < 0 {
 		dots = 0
 	}
-	return fmt.Sprintf("%s%s: %v\n", label, strings.Repeat(".", dots), value)
+
+	var valueStr string
+	switch v := value.(type) {
+	case float32:
+		valueStr = fmt.Sprintf("%.2f", v)
+	case float64:
+		valueStr = fmt.Sprintf("%.2f", v)
+	case int:
+		valueStr = fmt.Sprintln(humanize.Comma(int64(v)))
+	case uint64:
+		valueStr = fmt.Sprintln(humanize.Comma(int64(v)))
+	default:
+		valueStr = fmt.Sprintf("%v", v)
+	}
+
+	// Falls eine Einheit übergeben wurde, diese anhängen
+	unitStr := ""
+	if len(unit) > 0 {
+		unitStr = unit[0]
+	}
+
+	return fmt.Sprintf("%s%s: %s%s\n", label, strings.Repeat(".", dots), valueStr, unitStr)
+}
+
+func printRuneMapColumns(m map[rune]uint64, columns int) string {
+	var builder strings.Builder
+	totalWidth := 12 // Breite pro Spalte (z.B. 1 Zeichen Key + 8 Punkte + ": " + max 2-3 Ziffern)
+
+	i := 0
+	for k, v := range m {
+		keyStr := string(k)
+		dots := totalWidth - len(keyStr) - len(fmt.Sprintf(": %d", v))
+		if dots < 0 {
+			dots = 0
+		}
+
+		// Format: key + Punkte + ": " + Wert + 4 Leerzeichen als Abstand
+		fmtStr := fmt.Sprintf("%s%s: %d    ", keyStr, strings.Repeat(".", dots), v)
+		builder.WriteString(fmtStr)
+
+		i++
+		if i%columns == 0 {
+			builder.WriteString("\n")
+		}
+	}
+	if i%columns != 0 {
+		builder.WriteString("\n")
+	}
+
+	return builder.String()
 }

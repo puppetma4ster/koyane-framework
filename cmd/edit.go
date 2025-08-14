@@ -24,7 +24,7 @@ var editCmd = &cobra.Command{
 			return
 		}
 		if sort {
-			wordlist, err = editor.SortWordlist(wordlist)
+			err := wordlist.SortWordlist()
 			if err != nil {
 				fmt.Println("Fehler beim Sortieren:", err)
 				return

@@ -2,9 +2,10 @@ package editor
 
 import (
 	"bufio"
+	"os"
+
 	"github.com/puppetma4ster/koyane-framework/internal/core/generator"
 	"github.com/puppetma4ster/koyane-framework/internal/core/utils"
-	"os"
 )
 
 type EditWordlist struct {
@@ -38,7 +39,7 @@ func NewEditWordlist(inputPath, outputPath string) (*EditWordlist, error) {
 	}, nil
 }
 
-func SortWordlist(wordlist *EditWordlist) (*EditWordlist, error) {
+func (wordlist *EditWordlist)SortWordlist() (*EditWordlist, error) {
 	var listPath string = wordlist.tempPath
 	newTempPath, err := utils.GenerateRandomTempPath()
 	if err != nil {
@@ -57,7 +58,7 @@ func SortWordlist(wordlist *EditWordlist) (*EditWordlist, error) {
 	return wordlist, nil
 }
 
-func RemoveWordsWithMask(wordlist *EditWordlist, msk string) (*EditWordlist, error) {
+func (wordlist *EditWordlist)RemoveWordsWithMask( msk string) (*EditWordlist, error) {
 
 	newTempPath, err := utils.GenerateRandomTempPath() //generate new temp path
 	if err != nil {
@@ -103,7 +104,7 @@ func RemoveWordsWithMask(wordlist *EditWordlist, msk string) (*EditWordlist, err
 	return wordlist, nil
 }
 
-func FlushFinishedWordlist(wordlist *EditWordlist) error {
+func (wordlist *EditWordlist)FlushFinishedWordlist() error {
 	absolutePath, err := utils.ResolvePath(wordlist.outputPath)
 	if err != nil {
 		return err
