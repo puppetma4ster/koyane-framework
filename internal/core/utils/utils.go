@@ -220,6 +220,122 @@ func GenerateRandomTempPath() (string, error) {
 	return "", fmt.Errorf("couldn't create a temporary file")
 }
 
+func PhraseRanges(arg string) (string, string, error) {
+	if arg == "" {
+		return "", "", fmt.Errorf("no arguments specified")
+	}
+	var spaceCounter int8 = 0
+	for _, char := range arg {
+		if char == ' ' {
+			spaceCounter++
+			if spaceCounter >= 2 {
+				return "", "", fmt.Errorf("to many spaces: %s", arg)
+			}
+		}
+	}
+	var isFirstStr = true
+	var firstStr string = ""
+	var lastStr string = ""
+	for _, char := range arg {
+		if char == ' ' {
+			isFirstStr = false
+			continue
+		}
+		if isFirstStr {
+			firstStr += string(char)
+		} else {
+			lastStr += string(char)
+		}
+	}
+	return firstStr, lastStr, nil
+}
+
+func SplitWordlist(inputPath string) ([]string, error) {
+	const maxLines uint32 = 1_000_000
+
+	absInputPath, err := ResolvePath(inputPath)
+	if err != nil {
+		return nil, err
+	}
+
+	mainFile, err := os.Open(absInputPath)
+	if err != nil {
+		return nil, err
+	}
+	defer mainFile.Close()
+
+	var (
+		tempPath  string
+		tempFile  *os.File
+		writer    *bufio.Writer
+		retPaths  []string
+		lineIndex uint32
+	)
+
+	startNew := func() error {
+		var err error
+		tempPath, err = GenerateRandomTempPath()
+		if err != nil {
+			return err
+		}
+		tempFile, err = os.Create(tempPath)
+		if err != nil {
+			return err
+		}
+		writer = bufio.NewWriterSize(tempFile, 128*1024)
+		lineIndex = 0
+		return nil
+	}
+
+	if err := startNew(); err != nil {
+		return nil, err
+	}
+
+	scanner := bufio.NewScanner(mainFile)
+
+	for scanner.Scan() {
+		if _, err := writer.WriteString(scanner.Text()); err != nil {
+			return nil, err
+		}
+		if _, err := writer.WriteString("\n"); err != nil {
+			return nil, err
+		}
+		lineIndex++
+
+		if lineIndex >= maxLines { // when temp file is full
+			if err := writer.Flush(); err != nil {
+				return nil, err
+			}
+			if err := tempFile.Close(); err != nil {
+				return nil, err
+			}
+			retPaths = append(retPaths, tempPath)
+
+			if err := startNew(); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	if lineIndex > 0 {
+		if err := writer.Flush(); err != nil {
+			return nil, err
+		}
+		if err := tempFile.Close(); err != nil {
+			return nil, err
+		}
+		retPaths = append(retPaths, tempPath)
+	} else {
+		_ = tempFile.Close()
+		_ = os.Remove(tempPath)
+	}
+
+	return retPaths, nil
+}
+
 func CopyFileToTemp(inputPath, outputPath string) error {
 	inputFile, err := os.Open(inputPath)
 	if err != nil {

@@ -1,5 +1,5 @@
 /*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
+Copyright © 2025 puppetm4ster
 */
 package cmd
 
@@ -25,6 +25,7 @@ var rootCmd = &cobra.Command{
 		}
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) { // is always executed regardless of command / flag
+		figure.NewFigure("KYF", "slant", true).Print()
 		output.PrintStatus("statusRoot", "generateTemp") //Temp path management
 		err := utils.CreateTempDir()
 		if err != nil { // creates temp folder to /tmp/koyane_framework_tmp
@@ -52,6 +53,5 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	figure.NewFigure("KYF", "slant", true).Print()
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

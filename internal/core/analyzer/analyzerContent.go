@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"bufio"
+	"cmp"
 	"math"
 	"os"
 	"unicode"
@@ -250,4 +251,43 @@ func (wordlist *AnalyzerContent) statsInPercent() {
 	wordlist.WordsWUpperSpecPercent = (wordlist.WordsWUpperSpec / float32(wordlist.WordLines)) * percentMultiplier
 	wordlist.WordsWDigitUpperSpecPercent = (wordlist.WordsWDigitUpperSpec / float32(wordlist.WordLines)) * percentMultiplier
 
+}
+func mergeContentAnalyzers(wordlist1, wordlist2 *AnalyzerContent) *AnalyzerContent {
+	var hasDup bool = false
+	if wordlist1.HasDuplicates || wordlist2.HasDuplicates {
+		hasDup = true
+	}
+	var dupSlice []string
+	dupSlice = append(wordlist1.DuplicateWords, wordlist2.DuplicateWords...)
+
+	AnalyzerContent{
+		WordLines:                   wordlist1.WordLines + wordlist2.WordLines,
+		SmallestWordLen:             min(wordlist1.SmallestWordLen, wordlist2.SmallestWordLen),
+		BiggestWordLen:              max(wordlist1.BiggestWordLen, wordlist2.BiggestWordLen),
+		AvWordLen:                   (wordlist1.AvWordLen*float64(wordlist1.WordLines) + wordlist2.AvWordLen*float64(wordlist2.WordLines)) / (float64(wordlist1.WordLines) + float64(wordlist2.WordLines)),
+		CharCount:                   nil,
+		AvEntropy:                   0,
+		HasDuplicates:               hasDup,
+		DuplicateWords:              dupSlice,
+		WordsWDigits:                wordlist1.WordsWDigits + wordlist2.WordsWDigits,
+		WordsWDigitsPercent:         0,
+		WordsWUpper:                 wordlist1.WordsWUpper + wordlist2.WordsWUpper,
+		WordsWUpperPercent:          0,
+		WordsWSpecChar:              wordlist1.WordsWSpecChar + wordlist2.WordsWSpecChar,
+		WordsWSpecCharPercent:       0,
+		WordsWDigitUpper:            wordlist1.WordsWDigitUpper + wordlist2.WordsWDigitUpper,
+		WordsWDigitUpperPercent:     0,
+		WordsWDigitSpec:             wordlist1.WordsWDigitSpec + wordlist2.WordsWDigitSpec,
+		WordsWDigitSpecPercent:      0,
+		WordsWUpperSpec:             wordlist1.WordsWUpperSpec + wordlist2.WordsWUpperSpec,
+		WordsWUpperSpecPercent:      0,
+		WordsWDigitUpperSpec:        wordlist1.WordsWDigitUpperSpec + wordlist2.WordsWDigitUpperSpec,
+		WordsWDigitUpperSpecPercent: 0,
+	}
+}
+
+func ConcurrentContentAnalyzer(inputPath string, count, minMax, avLength, charFreq, avEntropy, duplicate, percStats bool) *AnalyzerContent {
+	//var wordlist *AnalyzerContent = NewContentDummy()
+
+	return NewContentDummy()
 }

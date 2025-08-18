@@ -1,0 +1,14 @@
+ui:
+  # Values: english, russian, german, french
+  language: english
+  disable_output_colors: false
+
+editor:
+  # Specifies the maximum number of characters a word can have when generating or filtering.
+  max_gen.word_length: 700
+
+analyzer:
+  # If true, each analyzed word list is saved in JSON format so
+  # that you get faster results the next time you analyze/edit.
+  # First, a check is performed to see if the MD5 hash matches.
+  save_all_analyzed_values: false

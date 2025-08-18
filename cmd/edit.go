@@ -2,13 +2,18 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/puppetma4ster/koyane-framework/internal/core/editor"
+	"github.com/puppetma4ster/koyane-framework/internal/core/utils"
 	"github.com/puppetma4ster/koyane-framework/internal/output"
 	"github.com/spf13/cobra"
 )
 
 var (
-	sort bool
+	sort        bool
+	removeMask  bool
+	removeRange string
 )
 var editCmd = &cobra.Command{
 	Use:   output.GenerateEditHelpTexts["use"],
@@ -27,13 +32,27 @@ var editCmd = &cobra.Command{
 			err := wordlist.SortWordlist()
 			if err != nil {
 				fmt.Println("Fehler beim Sortieren:", err)
-				return
+				output.PrintError("errors", "error", err)
 			}
 		}
-		err = editor.FlushFinishedWordlist(wordlist)
+		if cmd.Flags().Changed("remove-range") {
+			firstArg, lastArg, err := utils.PhraseRanges(removeRange)
+			if err != nil {
+				output.PrintError("errors", "error", err)
+				os.Exit(1)
+			}
+			err = wordlist.RemoveWordsByRange(firstArg, lastArg)
+			if err != nil {
+				output.PrintError("errors", "error", err)
+				os.Exit(1)
+
+			}
+		}
+		err = wordlist.FlushFinishedWordlist()
 		if err != nil {
-			fmt.Println("Fehler beim Sortieren:", err)
-			return
+			output.PrintError("errors", "error", err)
+			os.Exit(1)
+
 		}
 	},
 }
@@ -42,5 +61,7 @@ func init() {
 	rootCmd.AddCommand(editCmd)
 
 	editCmd.Flags().BoolVarP(&sort, "sort", "s", false, output.GenerateEditHelpTexts["sort"])
+	editCmd.Flags().BoolVarP(&removeMask, "remove-mask", "m", false, output.GenerateEditHelpTexts["removeMask"])
+	editCmd.Flags().StringVarP(&removeRange, "remove-range", "r", "", output.GenerateEditHelpTexts["removeMask"])
 
 }
