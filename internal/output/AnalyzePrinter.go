@@ -143,11 +143,11 @@ func (wordlist *AnalyzePrinter) PrintCharStatistics() {
 func (wordlist *AnalyzePrinter) PrintWordStats() {
 	wordlist.statsText.WriteString(printDotted("Contains digits", wordlist.content.WordsWDigitsPercent, "%"))
 	wordlist.statsText.WriteString(printDotted("Contains upper case letters", wordlist.content.WordsWUpperPercent, "%"))
-	wordlist.statsText.WriteString(printDotted("Contains special characters", wordlist.content.WordsWSpecCharPercent, "%"))
+	wordlist.statsText.WriteString(printDotted("Contains special chars", wordlist.content.WordsWSpecCharPercent, "%"))
 	wordlist.statsText.WriteString(printDotted("Contains upper case & digits", wordlist.content.WordsWDigitUpperPercent, "%"))
-	wordlist.statsText.WriteString(printDotted("Contains digits & special characters", wordlist.content.WordsWDigitSpecPercent, "%"))
-	wordlist.statsText.WriteString(printDotted("Contains upper case & special characters", wordlist.content.WordsWUpperSpecPercent, "%"))
-	wordlist.statsText.WriteString(printDotted("Contains Digits Upper, Case & special characters", wordlist.content.WordsWDigitUpperSpecPercent, "%"))
+	wordlist.statsText.WriteString(printDotted("Contains digits & special chars", wordlist.content.WordsWDigitSpecPercent, "%"))
+	wordlist.statsText.WriteString(printDotted("Contains upper case & special chars", wordlist.content.WordsWUpperSpecPercent, "%"))
+	wordlist.statsText.WriteString(printDotted("Contains Digits Upper, Case & special chars", wordlist.content.WordsWDigitUpperSpecPercent, "%"))
 }
 
 func (wordlist *AnalyzePrinter) FlushGeneral() {
@@ -163,7 +163,7 @@ func (wordlist *AnalyzePrinter) FlushStats() {
 }
 
 func printDotted(label string, value interface{}, unit ...string) string {
-	totalWidth := 40
+	totalWidth := 45
 	dots := totalWidth - len(label)
 	if dots < 0 {
 		dots = 0

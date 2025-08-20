@@ -27,7 +27,7 @@ var analyzeCmd = &cobra.Command{
 			if err != nil {
 				return
 			}
-			content, err := analyzer.NewAnalyzerContent(inputPath, true, true, true, true, true, true, true)
+			content, err := analyzer.ConcurrentContentAnalyzer(inputPath, true, true, true, true, true, true, true)
 			if err != nil {
 				return
 			}
@@ -39,39 +39,60 @@ var analyzeCmd = &cobra.Command{
 			printer.FlushGeneral()
 			printer.FlushContent()
 			printer.FlushStats()
-		}
-		if general {
-			content := analyzer.NewContentDummy()
-			general, err := analyzer.NewGeneralAnalyzer(inputPath)
-			if err != nil {
-				return
-			}
-			printer := output.NewAnalyzePrinter(general, content)
-			printer.PrintAllGeneralInfo()
-			printer.FlushGeneral()
-		}
-		if content {
+		} else if stats && content {
 			general := analyzer.NewGeneralDummy()
-			content, err := analyzer.NewAnalyzerContent(inputPath, true, true, true,
-				false, true, true, false)
+			content, err := analyzer.ConcurrentContentAnalyzer(inputPath, true, true, true,
+				true, true, true, true)
 			if err != nil {
 				return
 			}
-			printer := output.NewAnalyzePrinter(general, content)
-			printer.PrintAllContentInfo()
-			printer.FlushContent()
 
-		}
-		if stats {
-			general := analyzer.NewGeneralDummy()
-			content, err := analyzer.NewAnalyzerContent(inputPath, true, false, false,
-				true, false, true, true)
-			if err != nil {
-				return
-			}
 			printer := output.NewAnalyzePrinter(general, content)
+
+			printer.PrintAllContentInfo()
 			printer.PrintAllStatsInfo()
+
+			printer.FlushContent()
 			printer.FlushStats()
+		} else {
+			if general {
+				content := analyzer.NewContentDummy()
+				general, err := analyzer.NewGeneralAnalyzer(inputPath)
+				if err != nil {
+					return
+				}
+
+				printer := output.NewAnalyzePrinter(general, content)
+
+				printer.PrintAllGeneralInfo()
+
+				printer.FlushGeneral()
+			}
+			if content {
+				general := analyzer.NewGeneralDummy()
+				content, err := analyzer.NewAnalyzerContent(inputPath, true, true, true,
+					false, true, true, false)
+				if err != nil {
+					return
+				}
+				printer := output.NewAnalyzePrinter(general, content)
+
+				printer.PrintAllContentInfo()
+
+				printer.FlushContent()
+
+			}
+			if stats {
+				general := analyzer.NewGeneralDummy()
+				content, err := analyzer.ConcurrentContentAnalyzer(inputPath, true, false, false,
+					true, false, true, true)
+				if err != nil {
+					return
+				}
+				printer := output.NewAnalyzePrinter(general, content)
+				printer.PrintAllStatsInfo()
+				printer.FlushStats()
+			}
 		}
 	},
 }

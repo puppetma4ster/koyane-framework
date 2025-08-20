@@ -2,9 +2,9 @@ package analyzer
 
 import (
 	"bufio"
-	"cmp"
 	"math"
 	"os"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 
@@ -260,13 +260,16 @@ func mergeContentAnalyzers(wordlist1, wordlist2 *AnalyzerContent) *AnalyzerConte
 	var dupSlice []string
 	dupSlice = append(wordlist1.DuplicateWords, wordlist2.DuplicateWords...)
 
-	AnalyzerContent{
+	for char, freq := range wordlist2.CharCount {
+		wordlist1.CharCount[char] += freq
+	}
+	mergedContent := &AnalyzerContent{
 		WordLines:                   wordlist1.WordLines + wordlist2.WordLines,
 		SmallestWordLen:             min(wordlist1.SmallestWordLen, wordlist2.SmallestWordLen),
 		BiggestWordLen:              max(wordlist1.BiggestWordLen, wordlist2.BiggestWordLen),
 		AvWordLen:                   (wordlist1.AvWordLen*float64(wordlist1.WordLines) + wordlist2.AvWordLen*float64(wordlist2.WordLines)) / (float64(wordlist1.WordLines) + float64(wordlist2.WordLines)),
-		CharCount:                   nil,
-		AvEntropy:                   0,
+		CharCount:                   wordlist1.CharCount,
+		AvEntropy:                   (wordlist1.AvEntropy*float64(wordlist1.WordLines) + wordlist2.AvEntropy*float64(wordlist2.WordLines)) / (float64(wordlist1.WordLines) + float64(wordlist2.WordLines)),
 		HasDuplicates:               hasDup,
 		DuplicateWords:              dupSlice,
 		WordsWDigits:                wordlist1.WordsWDigits + wordlist2.WordsWDigits,
@@ -284,10 +287,51 @@ func mergeContentAnalyzers(wordlist1, wordlist2 *AnalyzerContent) *AnalyzerConte
 		WordsWDigitUpperSpec:        wordlist1.WordsWDigitUpperSpec + wordlist2.WordsWDigitUpperSpec,
 		WordsWDigitUpperSpecPercent: 0,
 	}
+	mergedContent.statsInPercent()
+
+	return mergedContent
 }
 
-func ConcurrentContentAnalyzer(inputPath string, count, minMax, avLength, charFreq, avEntropy, duplicate, percStats bool) *AnalyzerContent {
-	//var wordlist *AnalyzerContent = NewContentDummy()
+func ConcurrentContentAnalyzer(inputPath string, count, minMax, avLength, charFreq, avEntropy, duplicate, percStats bool) (*AnalyzerContent, error) {
+	tempPaths, err := utils.SplitWordlist(inputPath) // splitting wordlist into pices
+	if err != nil {
+		return nil, err
+	}
+	var threadPool sync.WaitGroup
+	channelContent := make(chan *AnalyzerContent)
 
-	return NewContentDummy()
+	for _, tempPath := range tempPaths { // starting GoRoutines (threads)
+		threadPool.Add(1)
+		go func(path string) {
+			defer threadPool.Done()
+			conResult, err := NewAnalyzerContent(path, count, minMax, avLength, charFreq, avEntropy, duplicate, percStats)
+			if err != nil {
+				panic(err)
+			}
+			channelContent <- conResult
+		}(tempPath)
+	}
+
+	go func() { // wait till every GoRoutine is finished
+		threadPool.Wait()
+		close(channelContent)
+	}()
+
+	var contentResults []*AnalyzerContent
+	for content := range channelContent { // coping channel pointer returns into slice
+		contentResults = append(contentResults, content)
+
+	}
+	err = utils.RemoveSplitWordlist(tempPaths) // delete old tempfiles
+	if err != nil {
+		return nil, err
+	}
+
+	// merging results
+	var wordlist *AnalyzerContent = NewContentDummy()
+	for _, content := range contentResults {
+		wordlist = mergeContentAnalyzers(wordlist, content)
+	}
+
+	return wordlist, err
 }

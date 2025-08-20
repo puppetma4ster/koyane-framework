@@ -49,6 +49,10 @@ func ExternalSort(inputPath, outputPath string) error {
 	scanner := bufio.NewScanner(inputFile)
 	chunkIndex := 0
 
+	newTempFolder, err := os.MkdirTemp(tempDir, "sort")
+	if err != nil {
+		return err
+	}
 	for {
 		var lines []string
 		for len(lines) < chunkSize && scanner.Scan() {
@@ -59,8 +63,7 @@ func ExternalSort(inputPath, outputPath string) error {
 		}
 
 		sort.Strings(lines) // Unicode
-
-		chunkFile := filepath.Join(tempDir, fmt.Sprintf("chunk_%d%s", chunkIndex, TempSuffix))
+		chunkFile := filepath.Join(newTempFolder, fmt.Sprintf("chunk_%d%s", chunkIndex, TempSuffix))
 		f, err := os.Create(chunkFile)
 		if err != nil {
 			return err
@@ -121,7 +124,10 @@ func ExternalSort(inputPath, outputPath string) error {
 		} else {
 			currentLines[minIdx] = ""
 			files[minIdx].Close()
-			os.Remove(tempFiles[minIdx])
+			err := os.RemoveAll(newTempFolder)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -329,11 +335,20 @@ func SplitWordlist(inputPath string) ([]string, error) {
 		}
 		retPaths = append(retPaths, tempPath)
 	} else {
-		_ = tempFile.Close()
 		_ = os.Remove(tempPath)
 	}
 
 	return retPaths, nil
+}
+
+func RemoveSplitWordlist(paths []string) error {
+	for _, path := range paths {
+		err := os.Remove(path)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func CopyFileToTemp(inputPath, outputPath string) error {
