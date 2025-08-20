@@ -25,7 +25,7 @@ var rootCmd = &cobra.Command{
 		}
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) { // is always executed regardless of command / flag
-		figure.NewFigure("KYF", "slant", true).Print()
+		figure.NewFigure("KOYANE-FRAMEWORK", "doom", true).Print()
 		output.PrintStatus("statusRoot", "generateTemp") //Temp path management
 		err := utils.CreateTempDir()
 		if err != nil { // creates temp folder to /tmp/koyane_framework_tmp

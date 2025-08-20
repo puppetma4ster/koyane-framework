@@ -2,6 +2,7 @@ package output
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/dustin/go-humanize"
@@ -68,22 +69,22 @@ func (wordlist *AnalyzePrinter) PrintAllStatsInfo() {
 
 // general words
 func (wordlist *AnalyzePrinter) PrintFileName() {
-	wordlist.generalText.WriteString(printDotted("File Name", wordlist.general.FileName))
+	wordlist.generalText.WriteString(printDotted("Name", wordlist.general.FileName))
 }
 
 func (wordlist *AnalyzePrinter) PrintFilePath() {
-	wordlist.generalText.WriteString(printDotted("File Path", wordlist.general.FilePath))
+	wordlist.generalText.WriteString(printDotted("Path", wordlist.general.FilePath))
 }
 
 func (wordlist *AnalyzePrinter) PrintFileSize() {
 	size := wordlist.general.FileSize
 	formattedSize := fmt.Sprintf("%d / %s", size, utils.HumanReadableBytes(size))
 
-	wordlist.generalText.WriteString(printDotted("File Size", formattedSize))
+	wordlist.generalText.WriteString(printDotted("Size", formattedSize))
 }
 
 func (wordlist *AnalyzePrinter) PrintExtension() {
-	wordlist.generalText.WriteString(printDotted("File Extension", wordlist.general.Extension))
+	wordlist.generalText.WriteString(printDotted("Extension", wordlist.general.Extension))
 }
 
 func (wordlist *AnalyzePrinter) PrintEncoding() {
@@ -91,7 +92,7 @@ func (wordlist *AnalyzePrinter) PrintEncoding() {
 }
 
 func (wordlist *AnalyzePrinter) PrintHashValue() {
-	wordlist.generalText.WriteString(printDotted("File Hash", wordlist.general.HashVal))
+	wordlist.generalText.WriteString(printDotted("MD5 Hash", wordlist.general.HashVal))
 }
 
 func (wordlist *AnalyzePrinter) PrintLastModified() {
@@ -104,11 +105,11 @@ func (wordlist *AnalyzePrinter) PrintWordLInes() {
 }
 
 func (wordlist *AnalyzePrinter) PrintSmallestWordLen() {
-	wordlist.contentText.WriteString(printDotted("Smallest Word Length", wordlist.content.SmallestWordLen))
+	wordlist.contentText.WriteString(printDotted("Smallest Word Length", strconv.Itoa(wordlist.content.SmallestWordLen)+"  ->  "+wordlist.content.SmallestWordStr))
 }
 
 func (wordlist *AnalyzePrinter) PrintBiggestWordLen() {
-	wordlist.contentText.WriteString(printDotted("Biggest Word Length", wordlist.content.BiggestWordLen))
+	wordlist.contentText.WriteString(printDotted("Biggest Word Length", strconv.Itoa(wordlist.content.BiggestWordLen)+"  ->  "+wordlist.content.BiggestWordStr))
 }
 
 func (wordlist *AnalyzePrinter) PrintAvWordLen() {

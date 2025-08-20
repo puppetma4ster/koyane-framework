@@ -14,7 +14,9 @@ import (
 type AnalyzerContent struct {
 	WordLines                   uint64
 	SmallestWordLen             int
+	SmallestWordStr             string
 	BiggestWordLen              int
+	BiggestWordStr              string
 	AvWordLen                   float64
 	CharCount                   map[rune]uint64
 	AvEntropy                   float64
@@ -37,29 +39,8 @@ type AnalyzerContent struct {
 }
 
 func NewAnalyzerContent(inputPath string, count, minMax, avLength, charFreq, avEntropy, duplicate, percStats bool) (*AnalyzerContent, error) {
-	var wordlist AnalyzerContent = AnalyzerContent{
-		WordLines:                   0,
-		SmallestWordLen:             0,
-		BiggestWordLen:              0,
-		AvWordLen:                   0.0,
-		CharCount:                   make(map[rune]uint64),
-		HasDuplicates:               false,
-		DuplicateWords:              []string{},
-		WordsWDigits:                0.0,
-		WordsWDigitsPercent:         0.0,
-		WordsWUpper:                 0.0,
-		WordsWUpperPercent:          0.0,
-		WordsWSpecChar:              0.0,
-		WordsWSpecCharPercent:       0.0,
-		WordsWDigitUpper:            0.0,
-		WordsWDigitUpperPercent:     0.0,
-		WordsWDigitSpec:             0.0,
-		WordsWDigitSpecPercent:      0.0,
-		WordsWUpperSpec:             0.0,
-		WordsWUpperSpecPercent:      0.0,
-		WordsWDigitUpperSpec:        0.0,
-		WordsWDigitUpperSpecPercent: 0.0,
-	}
+	var wordlist AnalyzerContent = *NewContentDummy()
+
 	absolutePath, err := utils.ResolvePath(inputPath)
 	if err != nil {
 		return nil, err
@@ -104,6 +85,7 @@ func NewAnalyzerContent(inputPath string, count, minMax, avLength, charFreq, avE
 		}
 		if duplicate {
 			wordlist.duplicates(lastWord, word)
+			lastWord = word
 		}
 		if percStats {
 			wordlist.wordStats(word)
@@ -133,7 +115,9 @@ func NewContentDummy() *AnalyzerContent {
 	return &AnalyzerContent{
 		WordLines:                   0,
 		SmallestWordLen:             0,
+		SmallestWordStr:             "",
 		BiggestWordLen:              0,
+		BiggestWordStr:              "",
 		AvWordLen:                   0.0,
 		CharCount:                   make(map[rune]uint64),
 		HasDuplicates:               false,
@@ -157,15 +141,22 @@ func NewContentDummy() *AnalyzerContent {
 
 func (wordlist *AnalyzerContent) passwordMinMaxInfo(word string) {
 	var wordlength int = utf8.RuneCountInString(word)
-	if wordlist.SmallestWordLen == 0 || wordlist.BiggestWordLen == 0 {
+	if wordlist.SmallestWordLen == 0 || wordlist.BiggestWordLen == 0 { // is not initialized
 		wordlist.SmallestWordLen = wordlength
 		wordlist.BiggestWordLen = wordlength
+
+		wordlist.SmallestWordStr = word
+		wordlist.BiggestWordStr = word
 	}
-	if wordlength < wordlist.SmallestWordLen {
+	if wordlength < wordlist.SmallestWordLen { // is smaler
 		wordlist.SmallestWordLen = wordlength
+		wordlist.SmallestWordStr = word
+
 	}
-	if wordlength > wordlist.BiggestWordLen {
+	if wordlength > wordlist.BiggestWordLen { // is bigger
 		wordlist.BiggestWordLen = wordlength
+		wordlist.BiggestWordStr = word
+
 	}
 }
 
@@ -253,6 +244,22 @@ func (wordlist *AnalyzerContent) statsInPercent() {
 
 }
 func mergeContentAnalyzers(wordlist1, wordlist2 *AnalyzerContent) *AnalyzerContent {
+	var smallLen = min(wordlist1.SmallestWordLen, wordlist2.SmallestWordLen)
+	var smallStr string = ""
+	if smallLen == wordlist1.SmallestWordLen {
+		smallStr = wordlist1.SmallestWordStr
+	} else {
+		smallStr = wordlist2.SmallestWordStr
+	}
+
+	var bigLen = min(wordlist1.SmallestWordLen, wordlist2.SmallestWordLen)
+	var bigStr string = ""
+	if bigLen == wordlist1.BiggestWordLen {
+		bigStr = wordlist1.BiggestWordStr
+	} else {
+		bigStr = wordlist2.BiggestWordStr
+	}
+
 	var hasDup bool = false
 	if wordlist1.HasDuplicates || wordlist2.HasDuplicates {
 		hasDup = true
@@ -265,8 +272,10 @@ func mergeContentAnalyzers(wordlist1, wordlist2 *AnalyzerContent) *AnalyzerConte
 	}
 	mergedContent := &AnalyzerContent{
 		WordLines:                   wordlist1.WordLines + wordlist2.WordLines,
-		SmallestWordLen:             min(wordlist1.SmallestWordLen, wordlist2.SmallestWordLen),
-		BiggestWordLen:              max(wordlist1.BiggestWordLen, wordlist2.BiggestWordLen),
+		SmallestWordLen:             smallLen,
+		SmallestWordStr:             smallStr,
+		BiggestWordLen:              bigLen,
+		BiggestWordStr:              bigStr,
 		AvWordLen:                   (wordlist1.AvWordLen*float64(wordlist1.WordLines) + wordlist2.AvWordLen*float64(wordlist2.WordLines)) / (float64(wordlist1.WordLines) + float64(wordlist2.WordLines)),
 		CharCount:                   wordlist1.CharCount,
 		AvEntropy:                   (wordlist1.AvEntropy*float64(wordlist1.WordLines) + wordlist2.AvEntropy*float64(wordlist2.WordLines)) / (float64(wordlist1.WordLines) + float64(wordlist2.WordLines)),
@@ -329,8 +338,14 @@ func ConcurrentContentAnalyzer(inputPath string, count, minMax, avLength, charFr
 
 	// merging results
 	var wordlist *AnalyzerContent = NewContentDummy()
+	var firstEntry bool = true
 	for _, content := range contentResults {
-		wordlist = mergeContentAnalyzers(wordlist, content)
+		if firstEntry {
+			wordlist = content
+			firstEntry = false
+		} else {
+			wordlist = mergeContentAnalyzers(wordlist, content)
+		}
 	}
 
 	return wordlist, err

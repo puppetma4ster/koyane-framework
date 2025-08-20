@@ -1,17 +1,19 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/puppetma4ster/koyane-framework/internal/core/analyzer"
 	"github.com/puppetma4ster/koyane-framework/internal/output"
 	"github.com/spf13/cobra"
 )
 
 var (
-	all      bool
-	general  bool
-	content  bool
-	stats    bool
-	saveFile string
+	allArg      bool
+	generalArg  bool
+	contentArg  bool
+	statsArg    bool
+	saveFileArg string
 )
 
 var analyzeCmd = &cobra.Command{
@@ -22,29 +24,47 @@ var analyzeCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		inputPath := args[0]
 
-		if all || general && content && stats {
+		if allArg || generalArg && contentArg && statsArg {
 			general, err := analyzer.NewGeneralAnalyzer(inputPath)
 			if err != nil {
-				return
+				output.PrintError("errors", "error", err)
+				os.Exit(1)
 			}
-			content, err := analyzer.ConcurrentContentAnalyzer(inputPath, true, true, true, true, true, true, true)
-			if err != nil {
-				return
+			isSaved, err := analyzer.IsSavedObj(general)
+			var content *analyzer.AnalyzerContent
+			if isSaved {
+				general, content, err = analyzer.LoadFromYamlAll(*general)
+				if err != nil {
+					output.PrintError("errors", "error", err)
+					os.Exit(1)
+				}
+			} else {
+				content, err = analyzer.ConcurrentContentAnalyzer(inputPath, true, true, true, true, true, true, true)
+				if err != nil {
+					output.PrintError("errors", "error", err)
+					os.Exit(1)
+				}
 			}
 			printer := output.NewAnalyzePrinter(general, content)
 			printer.PrintAllGeneralInfo()
 			printer.PrintAllContentInfo()
 			printer.PrintAllStatsInfo()
 
+			err = analyzer.SaveToYamlAll(general, content)
+			if err != nil {
+				output.PrintError("errors", "error", err)
+				os.Exit(1)
+			}
 			printer.FlushGeneral()
 			printer.FlushContent()
 			printer.FlushStats()
-		} else if stats && content {
+		} else if statsArg && contentArg {
 			general := analyzer.NewGeneralDummy()
 			content, err := analyzer.ConcurrentContentAnalyzer(inputPath, true, true, true,
 				true, true, true, true)
 			if err != nil {
-				return
+				output.PrintError("errors", "error", err)
+				os.Exit(1)
 			}
 
 			printer := output.NewAnalyzePrinter(general, content)
@@ -55,11 +75,12 @@ var analyzeCmd = &cobra.Command{
 			printer.FlushContent()
 			printer.FlushStats()
 		} else {
-			if general {
+			if generalArg {
 				content := analyzer.NewContentDummy()
 				general, err := analyzer.NewGeneralAnalyzer(inputPath)
 				if err != nil {
-					return
+					output.PrintError("errors", "error", err)
+					os.Exit(1)
 				}
 
 				printer := output.NewAnalyzePrinter(general, content)
@@ -68,12 +89,13 @@ var analyzeCmd = &cobra.Command{
 
 				printer.FlushGeneral()
 			}
-			if content {
+			if contentArg {
 				general := analyzer.NewGeneralDummy()
-				content, err := analyzer.NewAnalyzerContent(inputPath, true, true, true,
+				content, err := analyzer.ConcurrentContentAnalyzer(inputPath, true, true, true,
 					false, true, true, false)
 				if err != nil {
-					return
+					output.PrintError("errors", "error", err)
+					os.Exit(1)
 				}
 				printer := output.NewAnalyzePrinter(general, content)
 
@@ -82,12 +104,13 @@ var analyzeCmd = &cobra.Command{
 				printer.FlushContent()
 
 			}
-			if stats {
+			if statsArg {
 				general := analyzer.NewGeneralDummy()
 				content, err := analyzer.ConcurrentContentAnalyzer(inputPath, true, false, false,
 					true, false, true, true)
 				if err != nil {
-					return
+					output.PrintError("errors", "error", err)
+					os.Exit(1)
 				}
 				printer := output.NewAnalyzePrinter(general, content)
 				printer.PrintAllStatsInfo()
@@ -100,10 +123,10 @@ var analyzeCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(analyzeCmd)
 
-	analyzeCmd.Flags().BoolVarP(&all, "all", "a", false, output.AnalyzeHelpTexts["all"])
-	analyzeCmd.Flags().BoolVarP(&general, "general", "g", false, output.AnalyzeHelpTexts["generate"])
-	analyzeCmd.Flags().BoolVarP(&content, "content", "c", false, output.AnalyzeHelpTexts["content"])
-	analyzeCmd.Flags().BoolVarP(&stats, "stats", "s", false, output.AnalyzeHelpTexts["stats"])
-	analyzeCmd.Flags().StringVarP(&saveFile, "save-file", "O", "", output.AnalyzeHelpTexts["saveFile"])
+	analyzeCmd.Flags().BoolVarP(&allArg, "all", "a", false, output.AnalyzeHelpTexts["all"])
+	analyzeCmd.Flags().BoolVarP(&generalArg, "general", "g", false, output.AnalyzeHelpTexts["generate"])
+	analyzeCmd.Flags().BoolVarP(&contentArg, "content", "c", false, output.AnalyzeHelpTexts["content"])
+	analyzeCmd.Flags().BoolVarP(&statsArg, "stats", "s", false, output.AnalyzeHelpTexts["stats"])
+	analyzeCmd.Flags().StringVarP(&saveFileArg, "save-file", "O", "", output.AnalyzeHelpTexts["saveFile"])
 
 }

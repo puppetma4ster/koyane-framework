@@ -30,6 +30,7 @@ const ListSuffix string = ".klst"
 const TempSuffix string = ".ktmp"
 
 const tempDir = "/tmp/koyane_framework_tmp"
+const AnalyzedWlSaveDir = "~/.koyane_framework_saves"
 const chunkSize = 100000
 
 func ExternalSort(inputPath, outputPath string) error {
@@ -189,6 +190,13 @@ func TempPath(path string) (string, error) {
 func CreateTempDir() error {
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		return fmt.Errorf("folder for temporary files could not be created: %w", err)
+	}
+	absoluteUserPath, err := ResolvePath(AnalyzedWlSaveDir)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(absoluteUserPath, 0755); err != nil {
+		return fmt.Errorf("folder for analyzedWlSaveDir could not be created: %w", err)
 	}
 	return nil
 }
