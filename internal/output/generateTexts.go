@@ -50,6 +50,12 @@ var AnalyzeHelpTexts = map[string]string{
 	"saveFile": "Creates a file with the output print.",
 }
 
+var SearchHelpTexts = map[string]string{
+	"use":   "search",
+	"short": "Search wordlists",
+	"long":  "Search and Download Word Lists and Rules for Various Purposes",
+}
+
 var GenerateRootHelpTexts = map[string]string{
 	"use":   "koyane-framework",
 	"short": "...",

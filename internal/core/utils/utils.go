@@ -238,20 +238,23 @@ func PhraseRanges(arg string) (string, string, error) {
 	if arg == "" {
 		return "", "", fmt.Errorf("no arguments specified")
 	}
-	var spaceCounter int8 = 0
+	var seperatorCounter int8 = 0
 	for _, char := range arg {
-		if char == ' ' {
-			spaceCounter++
-			if spaceCounter >= 2 {
-				return "", "", fmt.Errorf("to many spaces: %s", arg)
+		if char == ':' {
+			seperatorCounter++
+			if seperatorCounter >= 2 {
+				return "", "", fmt.Errorf("to many range separator: %s", arg)
 			}
 		}
+	}
+	if seperatorCounter == 0 {
+		return "", "", fmt.Errorf("no range sperator used: %s", arg)
 	}
 	var isFirstStr = true
 	var firstStr string = ""
 	var lastStr string = ""
 	for _, char := range arg {
-		if char == ' ' {
+		if char == ':' {
 			isFirstStr = false
 			continue
 		}
@@ -261,7 +264,59 @@ func PhraseRanges(arg string) (string, string, error) {
 			lastStr += string(char)
 		}
 	}
+	if !isNumberOrStar(firstStr) && !isNumberOrStar(lastStr) {
+		return "", "", fmt.Errorf("range values are illegal: %s", arg)
+	}
 	return firstStr, lastStr, nil
+}
+
+func isNumberOrStar(s string) bool {
+	if _, err := strconv.ParseFloat(s, 64); err == nil {
+		return true
+	} else if s == "*" {
+		return true
+	}
+	return false
+}
+
+type Uint64Range struct {
+	MinEndless bool
+	MaxEndless bool
+	MinVal     uint64
+	maxVal     uint64
+}
+
+func NewUint64Range(arg string) (*Uint64Range, error) {
+	firstVal, secondVal, err := PhraseRanges(arg)
+	if err != nil {
+		return nil, err
+	}
+	var minEndless bool = false
+	var minVal uint64 = 0
+	var maxEndless bool = false
+	var maxVal uint64 = 0
+	if firstVal == "*" {
+		minEndless = true
+	} else {
+		minVal, err = strconv.ParseUint(firstVal, 10, 64) // 10 = decimal system 64 = bit size
+		if err != nil {
+			return nil, err
+		}
+	}
+	if secondVal == "*" {
+		maxEndless = true
+	} else {
+		maxVal, err = strconv.ParseUint(secondVal, 10, 64) // 10 = decimal system 64 = bit size
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &Uint64Range{
+		MinEndless: minEndless,
+		MaxEndless: maxEndless,
+		MinVal:     minVal,
+		maxVal:     maxVal,
+	}, nil
 }
 
 func SplitWordlist(inputPath string) ([]string, error) {

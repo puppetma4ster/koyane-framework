@@ -32,13 +32,13 @@ var analyzeCmd = &cobra.Command{
 			}
 			isSaved, err := analyzer.IsSavedObj(general)
 			var content *analyzer.AnalyzerContent
-			if isSaved {
-				general, content, err = analyzer.LoadFromYamlAll(*general)
+			if isSaved { // checking if wordlist is not changed and already analyzed
+				general, content, err = analyzer.LoadFromYamlAll(*general) // loading wordlist analytics
 				if err != nil {
 					output.PrintError("errors", "error", err)
 					os.Exit(1)
 				}
-			} else {
+			} else { // when file is not analyzed yet
 				content, err = analyzer.ConcurrentContentAnalyzer(inputPath, true, true, true, true, true, true, true)
 				if err != nil {
 					output.PrintError("errors", "error", err)
@@ -50,7 +50,7 @@ var analyzeCmd = &cobra.Command{
 			printer.PrintAllContentInfo()
 			printer.PrintAllStatsInfo()
 
-			err = analyzer.SaveToYamlAll(general, content)
+			err = analyzer.SaveToYamlAll(general, content) // saveing the values from the wordlist
 			if err != nil {
 				output.PrintError("errors", "error", err)
 				os.Exit(1)
