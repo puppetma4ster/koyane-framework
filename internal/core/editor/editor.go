@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strconv"
 	"unicode/utf8"
 
 	"github.com/puppetma4ster/koyane-framework/internal/core/generator"
@@ -107,78 +106,84 @@ func (wordlist *EditWordlist) RemoveWordsWithMask(msk string) error {
 	return nil
 }
 
-func (wordlist *EditWordlist) RemoveWordsByRange(min, max string) error {
-	var minEndless bool = false
-	var maxEndless bool = false
-	const endlessSymbol string = "*"
+// Uint64Range holds optional min and max values for filtering.
+// type Uint64Range struct { Min, Max *uint64 }
 
-	var minNumber int
-	var maxNumber int
-	if min == "*" {
-		minEndless = true
-	} else if imin, err := strconv.Atoi(min); err == nil {
-		minNumber = imin
-	} else {
-		return fmt.Errorf("the Minimal Range is not a number or \"*\": %s", min)
+// RemoveWordsByRangeUint removes all words from the current wordlist
+// whose length in runes is outside the given Uint64Range.
+// - If Min is set: words shorter than Min are skipped
+// - If Max is set: words longer than Max are skipped
+// - If both are nil: everything is kept
+func (w *EditWordlist) RemoveWordsByRangeUint(r *utils.Uint64Range) error {
+	if r == nil {
+		return fmt.Errorf("range must not be nil")
+	}
+	// Extra safety check: Min must not be greater than Max
+	if r.Min != nil && r.Max != nil && *r.Min > *r.Max {
+		return fmt.Errorf("the minimum variable must not be greater than the maximum! Min: %d Max: %d", *r.Min, *r.Max)
 	}
 
-	if max == "*" {
-		maxEndless = true
-	} else if imax, err := strconv.Atoi(max); err == nil {
-		maxNumber = imax
-	} else {
-		return fmt.Errorf("the Minimal Range is not a number or \"*\": %s", max)
-	}
-
-	if !minEndless && !maxEndless {
-		if minNumber > maxNumber {
-			return fmt.Errorf("the minimum variable must not be greater than the maximum! Min: %d Max: %d", minNumber, maxNumber)
-		}
-	}
-	newTempPath, err := utils.GenerateRandomTempPath() //generate new temp path
+	// generate a new temporary file path
+	newTempPath, err := utils.GenerateRandomTempPath()
 	if err != nil {
 		return err
 	}
-	newFile, err := os.Create(newTempPath) // create new Wordlist
+
+	// create a new file for filtered content
+	newFile, err := os.Create(newTempPath)
 	if err != nil {
 		return err
 	}
-	defer newFile.Close()
+	defer func() {
+		_ = newFile.Close()
+	}()
 
-	currentFile, err := os.Open(wordlist.tempPath)
+	// open the current wordlist file
+	currentFile, err := os.Open(w.tempPath)
 	if err != nil {
 		return err
 	}
-	defer currentFile.Close()
+	defer func() {
+		_ = currentFile.Close()
+	}()
 
-	writer := bufio.NewWriterSize(newFile, 1024*1024) // 1 MB buffer
+	// buffered writer for performance (1 MB buffer)
+	writer := bufio.NewWriterSize(newFile, 1024*1024)
 	defer writer.Flush()
 
+	// scanner with increased buffer size (default 64 KB → bumped to 1 MB)
 	scanner := bufio.NewScanner(currentFile)
+	buf := make([]byte, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
+
 	for scanner.Scan() {
-		if !minEndless {
-			if minNumber > utf8.RuneCountInString(scanner.Text()) {
-				continue
-			}
+		line := scanner.Text()
+		// rune count for proper Unicode length
+		l := uint64(utf8.RuneCountInString(line))
+
+		// enforce minimum length
+		if r.Min != nil && l < *r.Min {
+			continue
 		}
-		if !maxEndless {
-			if maxNumber < utf8.RuneCountInString(scanner.Text()) {
-				continue
-			}
+		// enforce maximum length
+		if r.Max != nil && l > *r.Max {
+			continue
 		}
-		_, err2 := writer.WriteString(scanner.Text() + "\n")
-		if err2 != nil {
-			return err2
+
+		// write line to new file if within range
+		if _, err := writer.WriteString(line + "\n"); err != nil {
+			return err
 		}
 	}
-	if err = scanner.Err(); err != nil {
+	if err := scanner.Err(); err != nil {
 		return err
 	}
-	err = os.Remove(wordlist.tempPath)
-	if err != nil {
+
+	// remove old file and swap paths
+	if err := os.Remove(w.tempPath); err != nil {
 		return err
 	}
-	wordlist.tempPath = newTempPath
+	w.tempPath = newTempPath
 	return nil
 }
 

@@ -1,6 +1,8 @@
 general:
   # default path for downloaded word lists
-  default_wordlist_file_location: ~/koyaneFramework/wordlists
+  default_wordlist_file_location: ~/.koyaneFramework/wordlists
+  wordlist_db_path: wordlist.db
+
 
 ui:
   # Values: english, russian, german, french
@@ -9,7 +11,7 @@ ui:
 
 editor:
   # Specifies the maximum number of characters a word can have when generating or filtering.
-  max_gen.word_length: 700
+  max_word_length: 700
 
 analyzer:
   # If true, each analyzed word list is saved in JSON format so

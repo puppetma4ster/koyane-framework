@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"os"
+
+	"github.com/puppetma4ster/koyane-framework/internal/core/utils"
 	"github.com/puppetma4ster/koyane-framework/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -24,7 +27,12 @@ var searchCmd = &cobra.Command{
 	Long:  output.SearchHelpTexts["long"],
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-
+		//absolutePath, err := utils.ResolvePath()
+		_, err := utils.LoadConfig("config.yaml")
+		if err != nil {
+			output.PrintError("errors", "error", err)
+			os.Exit(1)
+		}
 	},
 }
 

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/puppetma4ster/koyane-framework/internal/core/editor"
@@ -31,21 +30,21 @@ var editCmd = &cobra.Command{
 		if sort {
 			err := wordlist.SortWordlist()
 			if err != nil {
-				fmt.Println("Fehler beim Sortieren:", err)
-				output.PrintError("errors", "error", err)
-			}
-		}
-		if cmd.Flags().Changed("remove-range") {
-			firstArg, lastArg, err := utils.PhraseRanges(removeRange)
-			if err != nil {
-				output.PrintError("errors", "error", err)
-				os.Exit(1)
-			}
-			err = wordlist.RemoveWordsByRange(firstArg, lastArg)
-			if err != nil {
 				output.PrintError("errors", "error", err)
 				os.Exit(1)
 
+			}
+		}
+		if cmd.Flags().Changed("remove-range") {
+			rRange, err := utils.NewUint64Range(removeRange)
+			if err != nil {
+				output.PrintError("errors", "error", err)
+				os.Exit(1)
+			}
+			err = wordlist.RemoveWordsByRangeUint(rRange)
+			if err != nil {
+				output.PrintError("errors", "error", err)
+				os.Exit(1)
 			}
 		}
 		err = wordlist.FlushFinishedWordlist()

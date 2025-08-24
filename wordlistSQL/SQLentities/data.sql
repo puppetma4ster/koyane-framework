@@ -107,7 +107,3 @@ VALUES
 
 INSERT INTO wordlist_tags(wordlist_id, tag) VALUES (1, 'wifi');
 INSERT INTO wordlist_tags(wordlist_id, tag) VALUES (1, 'medium');
-
-
-
-SELECT * FROM wordlists;

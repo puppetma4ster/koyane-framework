@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 const LowerCaseCharacters string = "abcdefghijklmnopqrstuvwxyz" //?l
@@ -234,89 +236,143 @@ func GenerateRandomTempPath() (string, error) {
 	return "", fmt.Errorf("couldn't create a temporary file")
 }
 
-func PhraseRanges(arg string) (string, string, error) {
+func splitRange(arg string) (string, string, error) {
 	if arg == "" {
 		return "", "", fmt.Errorf("no arguments specified")
 	}
-	var seperatorCounter int8 = 0
-	for _, char := range arg {
-		if char == ':' {
-			seperatorCounter++
-			if seperatorCounter >= 2 {
-				return "", "", fmt.Errorf("to many range separator: %s", arg)
-			}
-		}
+	parts := strings.Split(arg, ":")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("invalid range %q (expected min:max)", arg)
 	}
-	if seperatorCounter == 0 {
-		return "", "", fmt.Errorf("no range sperator used: %s", arg)
-	}
-	var isFirstStr = true
-	var firstStr string = ""
-	var lastStr string = ""
-	for _, char := range arg {
-		if char == ':' {
-			isFirstStr = false
-			continue
-		}
-		if isFirstStr {
-			firstStr += string(char)
-		} else {
-			lastStr += string(char)
-		}
-	}
-	if !isNumberOrStar(firstStr) && !isNumberOrStar(lastStr) {
-		return "", "", fmt.Errorf("range values are illegal: %s", arg)
-	}
-	return firstStr, lastStr, nil
+	a := strings.TrimSpace(parts[0])
+	b := strings.TrimSpace(parts[1])
+	return a, b, nil
 }
 
-func isNumberOrStar(s string) bool {
-	if _, err := strconv.ParseFloat(s, 64); err == nil {
-		return true
-	} else if s == "*" {
-		return true
-	}
-	return false
-}
+// ---------- UINT64 ----------
 
 type Uint64Range struct {
-	MinEndless bool
-	MaxEndless bool
-	MinVal     uint64
-	maxVal     uint64
+	Min *uint64
+	Max *uint64
 }
 
 func NewUint64Range(arg string) (*Uint64Range, error) {
-	firstVal, secondVal, err := PhraseRanges(arg)
+	a, b, err := splitRange(arg)
 	if err != nil {
 		return nil, err
 	}
-	var minEndless bool = false
-	var minVal uint64 = 0
-	var maxEndless bool = false
-	var maxVal uint64 = 0
-	if firstVal == "*" {
-		minEndless = true
+
+	var minPtr, maxPtr *uint64
+	var minNumber, maxNumber uint64
+	var haveMin, haveMax bool
+
+	// validate min
+	if a == "" || a == "*" {
+		// open
+	} else if v, err := strconv.ParseUint(a, 10, 64); err != nil {
+		return nil, fmt.Errorf("the Minimal Range is not a number or \"*\": %s", a)
 	} else {
-		minVal, err = strconv.ParseUint(firstVal, 10, 64) // 10 = decimal system 64 = bit size
-		if err != nil {
-			return nil, err
-		}
+		minNumber = v
+		minPtr = &minNumber
+		haveMin = true
 	}
-	if secondVal == "*" {
-		maxEndless = true
+
+	// validate max
+	if b == "" || b == "*" {
+		// open
+	} else if v, err := strconv.ParseUint(b, 10, 64); err != nil {
+		return nil, fmt.Errorf("the Minimal Range is not a number or \"*\": %s", b) // (genau deine Message für max)
 	} else {
-		maxVal, err = strconv.ParseUint(secondVal, 10, 64) // 10 = decimal system 64 = bit size
-		if err != nil {
-			return nil, err
-		}
+		maxNumber = v
+		maxPtr = &maxNumber
+		haveMax = true
 	}
-	return &Uint64Range{
-		MinEndless: minEndless,
-		MaxEndless: maxEndless,
-		MinVal:     minVal,
-		maxVal:     maxVal,
-	}, nil
+
+	// min <= max
+	if haveMin && haveMax && minNumber > maxNumber {
+		return nil, fmt.Errorf("the minimum variable must not be greater than the maximum! Min: %d Max: %d", minNumber, maxNumber)
+	}
+
+	return &Uint64Range{Min: minPtr, Max: maxPtr}, nil
+}
+
+// ---------- FLOAT64 ----------
+
+type Float64Range struct {
+	Min *float64
+	Max *float64
+}
+
+func NewFloat64Range(arg string) (*Float64Range, error) {
+	a, b, err := splitRange(arg)
+	if err != nil {
+		return nil, err
+	}
+
+	var minPtr, maxPtr *float64
+	var minNumber, maxNumber float64
+	var haveMin, haveMax bool
+
+	// validate min
+	if a == "" || a == "*" {
+		// open
+	} else if v, err := strconv.ParseFloat(a, 64); err != nil {
+		return nil, fmt.Errorf("the Minimal Range is not a number or \"*\": %s", a)
+	} else {
+		minNumber = v
+		minPtr = &minNumber
+		haveMin = true
+	}
+
+	// validate max
+	if b == "" || b == "*" {
+		// open
+	} else if v, err := strconv.ParseFloat(b, 64); err != nil {
+		return nil, fmt.Errorf("the Minimal Range is not a number or \"*\": %s", b) // gleiche Message wie gewünscht
+	} else {
+		maxNumber = v
+		maxPtr = &maxNumber
+		haveMax = true
+	}
+
+	// min <= max
+	if haveMin && haveMax && minNumber > maxNumber {
+		return nil, fmt.Errorf("the minimum variable must not be greater than the maximum! Min: %g Max: %g", minNumber, maxNumber)
+	}
+
+	return &Float64Range{Min: minPtr, Max: maxPtr}, nil
+}
+
+type Config struct {
+	General struct {
+		DefaultWordlistPath string `yaml:"default_wordlist_file_location"`
+		DatabasePath        string `yaml:"wordlist_db_path"`
+	} `yaml:"general"`
+	Ui struct {
+		Language            string `yaml:"language"`
+		disableOutputColors bool   `yaml:"disable_output_colors"`
+	} `yaml:"ui"`
+	Editor struct {
+		MaxWordLen uint16 `yaml:"max_word_length"`
+	} `yaml:"editor"`
+	Analyzer struct {
+		SaveAllAnalyzed bool `yaml:"save_all_analyzed_values"`
+	} `yaml:"analyzer"`
+}
+
+func LoadConfig(path string) (*Config, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	var cfg Config
+	decoder := yaml.NewDecoder(f)
+	if err := decoder.Decode(&cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
 }
 
 func SplitWordlist(inputPath string) ([]string, error) {
