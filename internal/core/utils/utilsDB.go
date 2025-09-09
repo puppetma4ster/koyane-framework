@@ -33,6 +33,3 @@ type WordlistTag struct {
 func (Wordlist) TableName() string {
 	return "wordlists"
 }
-func (WordlistTag) TableName() string {
-	return "wordlist_tags"
-}

@@ -470,6 +470,34 @@ func RemoveSplitWordlist(paths []string) error {
 	return nil
 }
 
+// formatIntWithCommas returns an int64 as string with commas as thousands separators.
+func formatIntWithCommas(n int64) string {
+	// Negative Zahlen behandeln
+	negative := n < 0
+	if negative {
+		n = -n
+	}
+
+	// int64 -> string
+	s := strconv.FormatInt(n, 10)
+
+	// right to left
+	out := ""
+	count := 0
+	for i := len(s) - 1; i >= 0; i-- {
+		out = string(s[i]) + out
+		count++
+		if count%3 == 0 && i != 0 {
+			out = "," + out
+		}
+	}
+
+	if negative {
+		return "-" + out
+	}
+	return out
+}
+
 func CopyFileToTemp(inputPath, outputPath string) error {
 	inputFile, err := os.Open(inputPath)
 	if err != nil {

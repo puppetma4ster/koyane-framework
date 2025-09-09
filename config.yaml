@@ -1,7 +1,7 @@
 general:
   # default path for downloaded word lists
   default_wordlist_file_location: ~/.koyaneFramework/wordlists
-  wordlist_db_path: wordlist.db
+  wordlist_db_path: ./wordlists.db
 
 
 ui:
