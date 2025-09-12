@@ -65,6 +65,8 @@ func NewAnalyzerContent(inputPath string, count, minMax, avLength, charFreq, avE
 	var totalEntropy float64 = 0.0
 	var lastWord string
 	scanner := bufio.NewScanner(file)
+	buf := make([]byte, 0, 1024*1024) // 1 MB initial buffer
+	scanner.Buffer(buf, 1024*1024*10) // Max 10 MB pro Token
 	for scanner.Scan() {
 		var word string = scanner.Text()
 
@@ -95,7 +97,12 @@ func NewAnalyzerContent(inputPath string, count, minMax, avLength, charFreq, avE
 		return nil, err
 	}
 	if avLength {
-		wordlist.AvWordLen = float64(totalWordLen / wordlist.WordLines)
+		if wordlist.WordLines > 0 {
+			wordlist.AvWordLen = float64(totalWordLen) / float64(wordlist.WordLines)
+		} else {
+			wordlist.AvWordLen = 0.0
+		}
+
 	}
 	if avEntropy {
 		wordlist.AvEntropy = totalEntropy / float64(wordlist.WordLines)
@@ -170,13 +177,18 @@ func (wordlist *AnalyzerContent) charFrequency(word string) {
 	}
 }
 
+// calculateEntropy
 func calculateEntropy(word string) float64 {
 	freq := make(map[rune]float64)
-	length := float64(len(word))
+	length := float64(utf8.RuneCountInString(word))
 
-	// Zeichenhäufigkeiten zählen
+	// count rune frequencies
 	for _, ch := range word {
 		freq[ch]++
+	}
+
+	if length == 0 {
+		return 0.0
 	}
 
 	var ent float64 = 0.0
@@ -243,42 +255,64 @@ func (wordlist *AnalyzerContent) statsInPercent() {
 	wordlist.WordsWDigitUpperSpecPercent = (wordlist.WordsWDigitUpperSpec / float32(wordlist.WordLines)) * percentMultiplier
 
 }
+
+// mergeContentAnalyzers merges two AnalyzerContent structs into a single one.
+//
+// The function combines:
+// - Word line counts, smallest/biggest word info, average lengths and entropies,
+// - Character frequency maps,
+// - Duplicate flags and duplicate words slices,
+// - Word composition statistics (digits, uppercase, special chars, combinations).
+//
+// Percent values are recalculated using statsInPercent() after merging.
+//
+// Parameters:
+//   - wordlist1: the first AnalyzerContent instance
+//   - wordlist2: the second AnalyzerContent instance
+//
+// Returns:
+//   - A new AnalyzerContent instance containing the merged data.
+//
+// Notes:
+//   - Assumes that wordlist1 and wordlist2 are fully populated AnalyzerContent structs.
+//   - Uses weighted averages for fields like AvWordLen and AvEntropy.
 func mergeContentAnalyzers(wordlist1, wordlist2 *AnalyzerContent) *AnalyzerContent {
-	var smallLen = min(wordlist1.SmallestWordLen, wordlist2.SmallestWordLen)
-	var smallStr string = ""
+	// Determine smallest word
+	smallLen := min(wordlist1.SmallestWordLen, wordlist2.SmallestWordLen)
+	var smallStr string
 	if smallLen == wordlist1.SmallestWordLen {
 		smallStr = wordlist1.SmallestWordStr
 	} else {
 		smallStr = wordlist2.SmallestWordStr
 	}
 
-	var bigLen = min(wordlist1.SmallestWordLen, wordlist2.SmallestWordLen)
-	var bigStr string = ""
+	// Determine the biggest word
+	bigLen := max(wordlist1.BiggestWordLen, wordlist2.BiggestWordLen)
+	var bigStr string
 	if bigLen == wordlist1.BiggestWordLen {
 		bigStr = wordlist1.BiggestWordStr
 	} else {
 		bigStr = wordlist2.BiggestWordStr
 	}
 
-	var hasDup bool = false
-	if wordlist1.HasDuplicates || wordlist2.HasDuplicates {
-		hasDup = true
-	}
-	var dupSlice []string
-	dupSlice = append(wordlist1.DuplicateWords, wordlist2.DuplicateWords...)
+	// Merge duplicates
+	hasDup := wordlist1.HasDuplicates || wordlist2.HasDuplicates
+	dupSlice := append(wordlist1.DuplicateWords, wordlist2.DuplicateWords...)
 
+	// Merge character frequencies
 	for char, freq := range wordlist2.CharCount {
 		wordlist1.CharCount[char] += freq
 	}
+
 	mergedContent := &AnalyzerContent{
 		WordLines:                   wordlist1.WordLines + wordlist2.WordLines,
 		SmallestWordLen:             smallLen,
 		SmallestWordStr:             smallStr,
 		BiggestWordLen:              bigLen,
 		BiggestWordStr:              bigStr,
-		AvWordLen:                   (wordlist1.AvWordLen*float64(wordlist1.WordLines) + wordlist2.AvWordLen*float64(wordlist2.WordLines)) / (float64(wordlist1.WordLines) + float64(wordlist2.WordLines)),
+		AvWordLen:                   (wordlist1.AvWordLen*float64(wordlist1.WordLines) + wordlist2.AvWordLen*float64(wordlist2.WordLines)) / float64(wordlist1.WordLines+wordlist2.WordLines),
 		CharCount:                   wordlist1.CharCount,
-		AvEntropy:                   (wordlist1.AvEntropy*float64(wordlist1.WordLines) + wordlist2.AvEntropy*float64(wordlist2.WordLines)) / (float64(wordlist1.WordLines) + float64(wordlist2.WordLines)),
+		AvEntropy:                   (wordlist1.AvEntropy*float64(wordlist1.WordLines) + wordlist2.AvEntropy*float64(wordlist2.WordLines)) / float64(wordlist1.WordLines+wordlist2.WordLines),
 		HasDuplicates:               hasDup,
 		DuplicateWords:              dupSlice,
 		WordsWDigits:                wordlist1.WordsWDigits + wordlist2.WordsWDigits,
@@ -296,8 +330,8 @@ func mergeContentAnalyzers(wordlist1, wordlist2 *AnalyzerContent) *AnalyzerConte
 		WordsWDigitUpperSpec:        wordlist1.WordsWDigitUpperSpec + wordlist2.WordsWDigitUpperSpec,
 		WordsWDigitUpperSpecPercent: 0,
 	}
-	mergedContent.statsInPercent()
 
+	mergedContent.statsInPercent()
 	return mergedContent
 }
 

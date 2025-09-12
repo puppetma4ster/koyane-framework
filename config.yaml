@@ -1,6 +1,36 @@
 general:
   # default path for downloaded word lists
-  default_wordlist_file_location: ~/.koyaneFramework/wordlists
+  # Note: if a global path is used, the program must be executed with admin/root privileges -> sudo koyane ...
+  default_wordlist_file_location: ~/Documents
+
+  # user agent used to download word lists
+  # some alternative user agents:
+  # ----- windows 10 -----
+  # Chrome:
+  # Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+  # Firefox:
+  # Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0
+
+  # ----- MacOS 14 -----
+  # Safari:
+  # Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15
+
+  # ----- Android 14 Pixel -----
+  # Chrome:
+  # Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36
+
+  # ----- iPhone iOS 17 -----
+  # Safari:
+  # Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1
+
+  # ----- Special Agents -----
+  # Curl:
+  # curl/8.5.0
+  # wget:
+  # Wget/1.21.4 (linux-gnu)
+  # Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15
+  user_agent: Mozilla/5.0
+
   wordlist_db_path: ./wordlists.db
 
 

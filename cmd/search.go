@@ -11,6 +11,8 @@ import (
 )
 
 var (
+	viewArg string
+
 	nameArg          string
 	wordCountArg     string
 	smallWordLenArg  string
@@ -81,13 +83,28 @@ var searchCmd = &cobra.Command{
 			output.PrintError("errors", "error", err)
 			os.Exit(1)
 		}
-		output.PrintWordlistsTableDefault(list)
+		switch view := strings.ToLower(viewArg); view {
+		case "summary":
+			output.PrintWordlistsTableSummary(list)
+		case "stats":
+			output.PrintWordlistsTableStats(list)
+		case "chars":
+			output.PrintWordlistsTableChars(list)
+		case "default":
+			output.PrintWordlistsTableDefault(list)
+		case "full":
+			output.PrintWordlistsTableAll(list)
+		default:
+			output.PrintWarning("warnings", "invView", viewArg)
+			output.PrintWordlistsTableSummary(list)
+		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(searchCmd)
 
+	searchCmd.Flags().StringVar(&viewArg, "view", "summary", output.SearchHelpTexts["view"])
 	searchCmd.Flags().StringVarP(&nameArg, "name", "n", "", output.SearchHelpTexts["name"])
 	searchCmd.Flags().StringVarP(&wordCountArg, "entities", "w", "", output.SearchHelpTexts["words"])
 	searchCmd.Flags().StringVar(&smallWordLenArg, "smallest-entity", "", output.SearchHelpTexts["small_word"])

@@ -10,6 +10,13 @@ var StatusMessages = map[string]StatusCategory{
 		Prefix: "[-]",
 		Messages: map[string]string{
 			"error": "An unexpected error occurred:\n %s",
+			"invID": "An invalid ID was given: %S",
+		},
+	},
+	"warnings": {
+		Prefix: "[!]",
+		Messages: map[string]string{
+			"invView": "️Invalid view argument: %s, switching to default view \"summary\"",
 		},
 	},
 	"statusRoot": {
@@ -33,6 +40,18 @@ var StatusMessages = map[string]StatusCategory{
 		Messages: map[string]string{
 			"wordlistCreated": "Wordlist successfully created at: %s",
 			"archiveCreated":  "Compressed wordlist successfully created at: %s",
+		},
+	},
+	"statusGet": {
+		Prefix: "[*]",
+		Messages: map[string]string{
+			"try": "Try to download wordlist from: %s",
+		},
+	},
+	"successGet": {
+		Prefix: "[+]",
+		Messages: map[string]string{
+			"succeeded": "The list was successfully downloaded and saved at path: %s",
 		},
 	},
 }

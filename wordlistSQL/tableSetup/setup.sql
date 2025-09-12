@@ -19,7 +19,8 @@ CREATE TABLE wordlists (
     category TEXT NOT NULL,
     author TEXT NOT NULL,
     size INTEGER NOT NULL,
-    link TEXT NOT NULL
+    link TEXT NOT NULL,
+    info TEXT
 );
 
 DROP TABLE IF EXISTS wordlist_tags;

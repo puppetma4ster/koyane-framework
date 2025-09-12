@@ -4,6 +4,7 @@ Copyright © 2025 puppetm4ster
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/common-nighthawk/go-figure"
@@ -26,12 +27,16 @@ var rootCmd = &cobra.Command{
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) { // is always executed regardless of command / flag
 		figure.NewFigure("KOYANE-FRAMEWORK", "doom", true).Print()
+		fmt.Println("\n\n\n")
 		output.PrintStatus("statusRoot", "generateTemp") //Temp path management
 		err := utils.CreateTempDir()
 		if err != nil { // creates temp folder to /tmp/koyane_framework_tmp
 			output.PrintError("errors", "error", err)
 			os.Exit(1)
 		}
+
+		fmt.Println("\n\n")
+
 	},
 }
 

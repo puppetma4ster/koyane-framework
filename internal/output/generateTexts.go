@@ -56,6 +56,19 @@ var SearchHelpTexts = map[string]string{
 	"long":  "Search and Download Word Lists and Rules for Various Purposes",
 }
 
+var ShowHelpTexts = map[string]string{
+	"use":   "show",
+	"short": "Show wordlist statistics",
+	"long":  "Detailed listing of all attributes and statistics of a word list in the database",
+}
+
+var GetHelpTexts = map[string]string{
+	"use":   "get",
+	"short": "Download Wordlists",
+	"long":  "Download wordlists from the database using the list ID.",
+	"path":  "A custom download path if the path from the configuration YAML should not be used.",
+}
+
 var GenerateRootHelpTexts = map[string]string{
 	"use":   "koyane-framework",
 	"short": "...",

@@ -1,7 +1,14 @@
 package wordlistDB
 
 import (
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path"
 	"strings"
+	"time"
 
 	"github.com/puppetma4ster/koyane-framework/internal/core/utils"
 	"gorm.io/driver/sqlite"
@@ -250,4 +257,108 @@ func applyTagsFilter(q *gorm.DB, tagsPtr *[]string, mode string) *gorm.DB {
 				  AND wt.tag IN ?
 			)`, tags)
 	}
+}
+
+// FindByID searches for a Wordlist by its ID.
+// Returns the Wordlist pointer if found, or an error if not found or if the query fails.
+func (r *WordlistRepository) FindByID(id uint64) (*utils.Wordlist, error) {
+	var wl utils.Wordlist
+	result := r.db.Preload("Tags").First(&wl, id) // Preload tags relation
+
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil, errors.New("ID not found")
+	}
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return &wl, nil
+}
+
+// DownloadWordlist downloads a file from the given URL into the specified folder.
+// It shows a progress bar with percentage, downloaded size, and speed.
+//
+// Parameters:
+//   - url: the file URL to download
+//   - folder: the target folder where the file will be saved
+//
+// Returns:
+//   - error: any error that occurs during the request, file creation, or download
+func DownloadWordlist(url, folder, usrAgent string) error {
+	// Create a new HTTP request
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	// Set a custom User-Agent to avoid blocked requests
+	req.Header.Set("User-Agent", usrAgent)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Check if server responded with a success status
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad status: %s", resp.Status)
+	}
+
+	// Get the content length (total size in bytes)
+	size := resp.ContentLength
+	if size <= 0 {
+		fmt.Println("Warning: can't get content length, progress bar won't show correctly")
+	}
+
+	// Extract filename from URL and create destination file
+	filename := path.Base(url)
+	outFile, err := os.Create(path.Join(folder, filename))
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	// Track time and number of downloaded bytes
+	start := time.Now()
+	var downloaded int64
+
+	// Buffer for reading chunks of data
+	buf := make([]byte, 32*1024) // 32 KB buffer
+	for {
+		// Read a chunk from the response body
+		n, err := resp.Body.Read(buf)
+		if n > 0 {
+			// Write chunk to file
+			_, writeErr := outFile.Write(buf[:n])
+			if writeErr != nil {
+				return writeErr
+			}
+			// Update downloaded size
+			downloaded += int64(n)
+
+			// Print progress if total size is known
+			if size > 0 {
+				percent := float64(downloaded) / float64(size) * 100
+				elapsed := time.Since(start).Seconds()
+				speed := float64(downloaded) / 1024 / 1024 / elapsed // MB/s
+				fmt.Printf("[*] \r%.2f%% [%.2f MB / %.2f MB] at %.2f MB/s",
+					percent,
+					float64(downloaded)/1024/1024,
+					float64(size)/1024/1024,
+					speed)
+			}
+		}
+		// If end of file reached, stop reading
+		if err == io.EOF {
+			break
+		}
+		// Handle other errors
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Println()
+	return nil
 }

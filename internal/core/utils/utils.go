@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"gopkg.in/yaml.v3"
 )
 
@@ -346,6 +347,7 @@ func NewFloat64Range(arg string) (*Float64Range, error) {
 type Config struct {
 	General struct {
 		DefaultWordlistPath string `yaml:"default_wordlist_file_location"`
+		UserAgent           string `yaml:"user_agent"`
 		DatabasePath        string `yaml:"wordlist_db_path"`
 	} `yaml:"general"`
 	Ui struct {
@@ -525,4 +527,78 @@ func NotInSlice(slice []string, value string) bool {
 		}
 	}
 	return true
+}
+
+// TruncateWithTail returns a transformer for go-pretty table columns
+// that truncates long strings and appends a custom tail
+func TruncateWithTail(tail string, maxLen int) func(interface{}) string {
+	return func(val interface{}) string {
+		str := fmt.Sprint(val)
+		if len(str) <= maxLen {
+			return str
+		}
+		cut := maxLen - len(tail)
+		if cut < 0 {
+			return tail
+		}
+		return str[:cut] + tail
+	}
+}
+
+// PrintDotted Formats output statistics
+func PrintDotted(label string, value interface{}, unit ...string) string {
+	totalWidth := 25
+	dots := totalWidth - len(label)
+	if dots < 0 {
+		dots = 0
+	}
+
+	var valueStr string
+	switch v := value.(type) {
+	case float32:
+		valueStr = fmt.Sprintf("%.2f", v)
+	case float64:
+		valueStr = fmt.Sprintf("%.2f", v)
+	case int:
+		valueStr = fmt.Sprintln(humanize.Comma(int64(v)))
+	case uint64:
+		valueStr = fmt.Sprintln(humanize.Comma(int64(v)))
+	default:
+		valueStr = fmt.Sprintf("%v", v)
+	}
+
+	unitStr := ""
+	if len(unit) > 0 {
+		unitStr = unit[0]
+	}
+
+	return fmt.Sprintf("%s%s: %s%s\n", label, strings.Repeat(".", dots), valueStr, unitStr)
+}
+
+// PrintRuneMapColumns formats  rune slice for analyze output
+func PrintRuneMapColumns(m map[rune]uint64, columns int) string {
+	var builder strings.Builder
+	totalWidth := 12
+
+	i := 0
+	for k, v := range m {
+		keyStr := string(k)
+		dots := totalWidth - len(keyStr) - len(fmt.Sprintf(": %d", v))
+		if dots < 0 {
+			dots = 0
+		}
+
+		fmtStr := fmt.Sprintf("%s%s: %d    ", keyStr, strings.Repeat(".", dots), v)
+		builder.WriteString(fmtStr)
+
+		i++
+		if i%columns == 0 {
+			builder.WriteString("\n")
+		}
+	}
+	if i%columns != 0 {
+		builder.WriteString("\n")
+	}
+
+	return builder.String()
 }

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-DB="wordists.db"
+DB="wordlists.db"
 SQLSETUP="$(dirname "$0")/tableSetup/setup.sql" # path to database tables configuration
 
-SQLENTITIES_DIR="$(dirname "$0")/SQLentities" # folder for db entries
+SQLENTITIES_DIR="$(dirname "$0")/DBentities" # folder for db entries
 
 PRINT="$(dirname "$0")/printAll.sql"  # print whole DB an the and
 
