@@ -167,14 +167,23 @@ func ResolvePath(input string) (string, error) {
 	return clean, nil
 }
 
+// ListPath generates the final list file path based on a temporary file path.
+//
+// It performs the following steps:
+// 1. Resolves the given path to an absolute path using ResolvePath().
+// 2. Extracts the file extension from the absolute path.
+// 3. Removes the extension from the original path to get the base name.
+// 4. Appends the predefined ListSuffix to the base name to create the final file path.
+// 5. Returns the new file path and any error encountered during path resolution.
 func ListPath(path string) (string, error) {
 	absolutePath, err := ResolvePath(path)
 	if err != nil {
-		return "", err
+		return "", err // Return empty string and error if path cannot be resolved
 	}
-	ext := filepath.Ext(absolutePath)
-	base := strings.TrimSuffix(path, ext)
-	return base + ListSuffix, nil
+
+	ext := filepath.Ext(absolutePath)     // Extract file extension, e.g., ".tmp"
+	base := strings.TrimSuffix(path, ext) // Remove extension from original path
+	return base + ListSuffix, nil         // Append ListSuffix and return final path
 }
 
 func TempPath(path string) (string, error) {
@@ -346,9 +355,10 @@ func NewFloat64Range(arg string) (*Float64Range, error) {
 
 type Config struct {
 	General struct {
-		DefaultWordlistPath string `yaml:"default_wordlist_file_location"`
-		UserAgent           string `yaml:"user_agent"`
-		DatabasePath        string `yaml:"wordlist_db_path"`
+		DefaultWordlistPath  string `yaml:"default_wordlist_file_location"`
+		UserAgent            string `yaml:"user_agent"`
+		DatabasePath         string `yaml:"wordlist_db_path"`
+		MultiThreadFileLines uint32 `yaml:"multithread_file_lines"`
 	} `yaml:"general"`
 	Ui struct {
 		Language            string `yaml:"language"`
@@ -378,7 +388,11 @@ func LoadConfig(path string) (*Config, error) {
 }
 
 func SplitWordlist(inputPath string) ([]string, error) {
-	const maxLines uint32 = 1_000_000
+	cfg, err := LoadConfig("config.yaml")
+	if err != nil {
+		return nil, err
+	}
+	var maxLines = cfg.General.MultiThreadFileLines
 
 	absInputPath, err := ResolvePath(inputPath)
 	if err != nil {
@@ -469,6 +483,50 @@ func RemoveSplitWordlist(paths []string) error {
 			return err
 		}
 	}
+	return nil
+}
+
+// MergeWordlists merges multiple files into a single output file.
+// paths: slice of input file paths
+// outputPath: path to the final merged file
+func MergeWordlists(paths []string, outputPath string) error {
+	newPath, err := ListPath(outputPath)
+	if err != nil {
+		return err
+	}
+	outFile, err := os.Create(newPath)
+	if err != nil {
+		return fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer outFile.Close()
+
+	writer := bufio.NewWriter(outFile)
+	defer writer.Flush()
+
+	for _, path := range paths {
+		inFile, err := os.Open(path)
+		if err != nil {
+			return fmt.Errorf("failed to open input file %s: %w", path, err)
+		}
+
+		scanner := bufio.NewScanner(inFile)
+		for scanner.Scan() {
+			line := scanner.Text()
+			_, err := writer.WriteString(line + "\n")
+			if err != nil {
+				inFile.Close()
+				return fmt.Errorf("failed to write line: %w", err)
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			inFile.Close()
+			return fmt.Errorf("error reading file %s: %w", path, err)
+		}
+
+		inFile.Close()
+	}
+
 	return nil
 }
 

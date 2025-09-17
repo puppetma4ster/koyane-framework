@@ -13,7 +13,7 @@ import (
 type EditWordlist struct {
 	isSorted   bool
 	outputPath string
-	tempPath   string
+	tempPaths  []string
 }
 
 func NewEditWordlist(inputPath, outputPath string) (*EditWordlist, error) {
@@ -34,51 +34,57 @@ func NewEditWordlist(inputPath, outputPath string) (*EditWordlist, error) {
 	if err != nil {
 		return nil, err
 	}
+	tempList, err := utils.SplitWordlist(newTempPath)
+	if err != nil {
+		return nil, err
+	}
 	return &EditWordlist{
 		isSorted:   false,
 		outputPath: absoluteOutputPath,
-		tempPath:   newTempPath,
+		tempPaths:  tempList,
 	}, nil
 }
 
-func (wordlist *EditWordlist) SortWordlist() error {
-	var listPath string = wordlist.tempPath
-	newTempPath, err := utils.GenerateRandomTempPath()
-	if err != nil {
-		return err
-	}
-	err = utils.ExternalSort(listPath, newTempPath)
-	if err != nil {
-		return err
-	}
-	err = os.Remove(listPath)
-	if err != nil {
-		return err
-	}
-	wordlist.isSorted = true
-	wordlist.tempPath = newTempPath
-	return nil
+func (wordlist *EditWordlist) ConcurrentSortWordlist()  {
+	
 }
 
-func (wordlist *EditWordlist) RemoveWordsWithMask(msk string) error {
+func (wordlist *EditWordlist) SortWordlist(inputPath string) (string, error) {
+	newTempPath, err := utils.GenerateRandomTempPath()
+	if err != nil {
+		return "", err
+	}
+	err = utils.ExternalSort(inputPath, newTempPath)
+	if err != nil {
+		return "", err
+	}
+	err = os.Remove(inputPath)
+	if err != nil {
+		return "", err
+	}
+	wordlist.isSorted = true
+	return newTempPath, nil
+}
+
+func (wordlist *EditWordlist) RemoveWordsWithMask(msk, inputPath string) (string, error) {
 
 	newTempPath, err := utils.GenerateRandomTempPath() //generate new temp path
 	if err != nil {
-		return err
+		return "", err
 	}
-	currentFile, err := os.Open(wordlist.tempPath) //open old wordlist
+	currentFile, err := os.Open(inputPath) //open old wordlist
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer currentFile.Close()
 	newFile, err := os.Create(newTempPath) // create new Wordlist
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer newFile.Close()
 	mask, err := generator.NewMaskInterpreter(msk)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	writer := bufio.NewWriterSize(newFile, 1024*1024) // 1 MB buffer
@@ -91,19 +97,18 @@ func (wordlist *EditWordlist) RemoveWordsWithMask(msk string) error {
 		}
 		_, err = writer.WriteString(scanner.Text() + "\n")
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 	if err = scanner.Err(); err != nil {
-		return err
+		return "", err
 	}
 
-	err = os.Remove(wordlist.tempPath)
+	err = os.Remove(inputPath)
 	if err != nil {
-		return err
+		return "", err
 	}
-	wordlist.tempPath = newTempPath
-	return nil
+	return newTempPath, nil
 }
 
 // Uint64Range holds optional min and max values for filtering.
@@ -114,34 +119,34 @@ func (wordlist *EditWordlist) RemoveWordsWithMask(msk string) error {
 // - If Min is set: words shorter than Min are skipped
 // - If Max is set: words longer than Max are skipped
 // - If both are nil: everything is kept
-func (w *EditWordlist) RemoveWordsByRangeUint(r *utils.Uint64Range) error {
+func (wordlist *EditWordlist) RemoveWordsByRangeUint(r *utils.Uint64Range, inputPath string) (string, error) {
 	if r == nil {
-		return fmt.Errorf("range must not be nil")
+		return "", fmt.Errorf("range must not be nil")
 	}
 	// Extra safety check: Min must not be greater than Max
 	if r.Min != nil && r.Max != nil && *r.Min > *r.Max {
-		return fmt.Errorf("the minimum variable must not be greater than the maximum! Min: %d Max: %d", *r.Min, *r.Max)
+		return "", fmt.Errorf("the minimum variable must not be greater than the maximum! Min: %d Max: %d", *r.Min, *r.Max)
 	}
 
 	// generate a new temporary file path
 	newTempPath, err := utils.GenerateRandomTempPath()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// create a new file for filtered content
 	newFile, err := os.Create(newTempPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() {
 		_ = newFile.Close()
 	}()
 
 	// open the current wordlist file
-	currentFile, err := os.Open(w.tempPath)
+	currentFile, err := os.Open(inputPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() {
 		_ = currentFile.Close()
@@ -172,31 +177,26 @@ func (w *EditWordlist) RemoveWordsByRangeUint(r *utils.Uint64Range) error {
 
 		// write line to new file if within range
 		if _, err := writer.WriteString(line + "\n"); err != nil {
-			return err
+			return "", err
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return err
+		return "", err
 	}
 
 	// remove old file and swap paths
-	if err := os.Remove(w.tempPath); err != nil {
-		return err
+	if err := os.Remove(inputPath); err != nil {
+		return "", err
 	}
-	w.tempPath = newTempPath
-	return nil
+	return newTempPath, nil
 }
 
 func (wordlist *EditWordlist) FlushFinishedWordlist() error {
-	absolutePath, err := utils.ResolvePath(wordlist.outputPath)
+	err := utils.MergeWordlists(wordlist.tempPaths, wordlist.outputPath)
 	if err != nil {
 		return err
 	}
-	absolutePath, err = utils.ListPath(absolutePath)
-	if err != nil {
-		return err
-	}
-	err = utils.CopyFileToTemp(wordlist.tempPath, absolutePath)
+	err = utils.RemoveSplitWordlist(wordlist.tempPaths)
 	if err != nil {
 		return err
 	}

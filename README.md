@@ -11,7 +11,7 @@
 ```                   
 
 
-**Koyane** is a modular framework for generating, editing, and analyzing wordlists, designed for password cracking and ethical security testing.  
+**Koyane** is a modular framework for generating, editing, finding, and analyzing wordlists, designed for password cracking and ethical security testing.  
 The project is named after *Ame-no-Koyane*, a kami (deity) in Japanese mythology associated with structure, ritual, and the power of words.
 
 ---
@@ -19,6 +19,8 @@ The project is named after *Ame-no-Koyane*, a kami (deity) in Japanese mythology
 
 ### 📦 From pypi (Recommended)
 
+#### There is currently no fully functional version of the program available.
+#### The pipy version was a very early alpha release. However, since the program has been remastered in Go, this version is NOT recommended.
 You can install the latest build directly with pip:
 
 ```bash
@@ -40,6 +42,7 @@ I try to update the project once a week.
 + Basic wordlist sorting
 + CLI interface powered by Typer
 + Basic status messages
++ find outher wordlists, see there stats and download them
 
 **Not yet implemented:**
 
@@ -70,11 +73,7 @@ Koyane aims to become a fast, modular, and scriptable framework for:
 ## Example Usage
 
 ```bash
-koyane generate --min 4 --max 6 --char-set abc123 output_wordlist.txt
-koyane generate --min 1 --max 8 --char-file charset.txt output_wordlist.txt
-koyane generate --mask ?L?v?l?l?l?d?d?p output_wordlist.txt
-koyane generate --min 5 --mask ?L?v?l?l?l?d?d?p output_wordlist.txt
-koyane analyze wordlist.txt
+koyane [command] flags(s)
 ```
 ---
 ## License

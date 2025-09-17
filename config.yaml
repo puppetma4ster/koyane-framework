@@ -32,6 +32,8 @@ general:
   user_agent: Mozilla/5.0
 
   wordlist_db_path: ./wordlists.db
+  # Specifies how many lines each file may have when it is split for multithreading. The number must NOT be negative.
+  multithread_file_lines: 1000000  # 1_000_000
 
 
 ui:
