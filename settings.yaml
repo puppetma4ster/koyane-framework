@@ -1,0 +1,3 @@
+binaryPaths:
+  cfgString: /etc/koyane-framework/config.yaml
+  dbPath: /var/lib/koyane-framework/wordLists.db

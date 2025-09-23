@@ -70,7 +70,9 @@ var GetHelpTexts = map[string]string{
 }
 
 var GenerateRootHelpTexts = map[string]string{
-	"use":   "koyane-framework",
-	"short": "...",
-	"long":  "Koyane-Framework :: wordlist forge & analysis toolkit made by Puppetm4ster",
+	"use":     "koyane-framework",
+	"short":   "...",
+	"long":    "Koyane-Framework :: wordlist forge & analysis toolkit made by Puppetm4ster",
+	"toggle":  "",
+	"version": "shows the version of the program",
 }

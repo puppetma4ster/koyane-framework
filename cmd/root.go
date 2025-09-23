@@ -13,16 +13,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	versionArg bool
+)
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   output.GenerateRootHelpTexts["use"],
 	Short: output.GenerateRootHelpTexts["short"],
 	Long:  output.GenerateRootHelpTexts["long"],
 	Run: func(cmd *cobra.Command, args []string) {
-		err := cmd.Help() // printing help when no command is specified
-		if err != nil {
-			output.PrintError("errors", "error", err)
-			os.Exit(1)
+		if versionArg {
+			fmt.Println("koyane-framework 0.0.9")
+		} else {
+			err := cmd.Help() // printing help when no command is specified
+			if err != nil {
+				output.PrintError("errors", "error", err)
+				os.Exit(1)
+			}
 		}
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) { // is always executed regardless of command / flag
@@ -34,7 +42,6 @@ var rootCmd = &cobra.Command{
 			output.PrintError("errors", "error", err)
 			os.Exit(1)
 		}
-
 		fmt.Println("\n\n")
 
 	},
@@ -59,4 +66,5 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().BoolVarP(&versionArg, "version", "v", false, output.GenerateRootHelpTexts["version"])
 }

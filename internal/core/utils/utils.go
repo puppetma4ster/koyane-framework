@@ -387,6 +387,28 @@ func LoadConfig(path string) (*Config, error) {
 	return &cfg, nil
 }
 
+type Settings struct {
+	binaryPaths struct {
+		CfgPath string `yaml:"cfgString"`
+		DbPath  string `yaml:"bdPath"`
+	}
+}
+
+func LoadSettings(path string) (*Settings, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	var set Settings
+	decoder := yaml.NewDecoder(f)
+	if err := decoder.Decode(&set); err != nil {
+		return nil, err
+	}
+	return &set, nil
+}
+
 func SplitWordlist(inputPath string) ([]string, error) {
 	cfg, err := LoadConfig("config.yaml")
 	if err != nil {
@@ -659,4 +681,98 @@ func PrintRuneMapColumns(m map[rune]uint64, columns int) string {
 	}
 
 	return builder.String()
+}
+
+// fileExists checks if an file exists
+//
+// Parameters:
+//   - path: the path to the file to be tested
+//
+// Returns:
+//   - bool: true if file exists and false if it doesn't
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	if err == nil {
+		// file exists
+		return true
+	}
+	if os.IsNotExist(err) {
+		// file dont exists
+		return false
+	}
+	return false
+}
+
+// GetConfigPath determines the path to the program's configuration file.
+// It checks possible locations in the following order:
+// 1. Default system path: "/etc/koyane-framework/config.yaml".
+// 2. User-specific path: "$HOME/.config/koyane-framework/settings.yaml", if this file exists.
+// 3. Environment variable "KOYANE_CONFIG": if set, it overrides the previous paths.
+// Returns:
+// - string: the resolved path to the configuration file.
+// - error: an error if, for example, the user's home directory cannot be determined.
+func GetConfigPath() (string, error) {
+	var configPath string = "/etc/koyane-framework/config.yaml"
+	var changed bool = false
+
+	// Check the user's home settings YAML
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	settingsPath := filepath.Join(home, ".config/koyane-framework/settings.yaml")
+	if fileExists(settingsPath) {
+		set, err := LoadSettings(settingsPath)
+		if err != nil {
+			return "", err
+		}
+		configPath = set.binaryPaths.DbPath
+		changed = true
+	}
+
+	// Check if an environment variable is set
+	if envPath := os.Getenv("KOYANE_CONFIG"); envPath != "" {
+		configPath = envPath
+		changed = true
+	}
+	if !changed {
+		if !fileExists(configPath) {
+			return "", fmt.Errorf("there is no config path found as environment variable, "+
+				"user home and default path: %s", configPath)
+		}
+	}
+	return configPath, nil
+}
+
+func GetDatabasePath() (string, error) {
+	var databasePath string = "/var/lib/koyane-framework/wordLists.db"
+	var changed bool = false
+
+	// Check the user's home settings YAML
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	settingsPath := filepath.Join(home, ".config/koyane-framework/settings.yaml")
+	if fileExists(settingsPath) {
+		set, err := LoadSettings(settingsPath)
+		if err != nil {
+			return "", err
+		}
+		databasePath = set.binaryPaths.DbPath
+		changed = true
+	}
+
+	// Check if an environment variable is set
+	if envPath := os.Getenv("KOYANE_DATABASE"); envPath != "" {
+		databasePath = envPath
+		changed = true
+	}
+	if !changed {
+		if !fileExists(databasePath) {
+			return "", fmt.Errorf("there is no config path found as environment variable, "+
+				"user home and default path: %s", databasePath)
+		}
+	}
+	return databasePath, err
 }

@@ -31,7 +31,7 @@ general:
   # Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15
   user_agent: Mozilla/5.0
 
-  wordlist_db_path: ./wordlists.db
+  wordlist_db_path: ./wordLists.db
   # Specifies how many lines each file may have when it is split for multithreading. The number must NOT be negative.
   multithread_file_lines: 1000000  # 1_000_000
 

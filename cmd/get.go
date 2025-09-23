@@ -29,13 +29,22 @@ var getCmd = &cobra.Command{
 			output.PrintError("errors", "invID", args[0])
 			os.Exit(1)
 		}
-		cfg, err := utils.LoadConfig("config.yaml") // loading yaml for db path
+		cfgPath, err := utils.GetConfigPath()
 		if err != nil {
 			output.PrintError("errors", "error", err)
 			os.Exit(1)
 		}
-
-		db, err := wordlistDB.NewWordlistRepository(cfg.General.DatabasePath) //	loading db repo
+		cfg, err := utils.LoadConfig(cfgPath) // loading yaml for db path
+		if err != nil {
+			output.PrintError("errors", "error", err)
+			os.Exit(1)
+		}
+		dbPath, err := utils.GetDatabasePath()
+		if err != nil {
+			output.PrintError("errors", "error", err)
+			os.Exit(1)
+		}
+		db, err := wordlistDB.NewWordlistRepository(dbPath) //	loading db repo
 		if err != nil {
 			output.PrintError("errors", "error", err)
 			os.Exit(1)

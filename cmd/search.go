@@ -42,14 +42,12 @@ var searchCmd = &cobra.Command{
 	Long:  output.SearchHelpTexts["long"],
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-
-		cfg, err := utils.LoadConfig("config.yaml")
+		dbPath, err := utils.GetDatabasePath()
 		if err != nil {
 			output.PrintError("errors", "error", err)
 			os.Exit(1)
 		}
-
-		db, err := wordlistDB.NewWordlistRepository(cfg.General.DatabasePath)
+		db, err := wordlistDB.NewWordlistRepository(dbPath)
 		if err != nil {
 			output.PrintError("errors", "error", err)
 			os.Exit(1)
@@ -96,7 +94,7 @@ var searchCmd = &cobra.Command{
 			output.PrintWordlistsTableAll(list)
 		default:
 			output.PrintWarning("warnings", "invView", viewArg)
-			output.PrintWordlistsTableSummary(list)
+			output.PrintWordlistsTableDefault(list)
 		}
 	},
 }
@@ -104,7 +102,7 @@ var searchCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(searchCmd)
 
-	searchCmd.Flags().StringVar(&viewArg, "view", "summary", output.SearchHelpTexts["view"])
+	searchCmd.Flags().StringVar(&viewArg, "view", "", output.SearchHelpTexts["view"])
 	searchCmd.Flags().StringVarP(&nameArg, "name", "n", "", output.SearchHelpTexts["name"])
 	searchCmd.Flags().StringVarP(&wordCountArg, "entities", "w", "", output.SearchHelpTexts["words"])
 	searchCmd.Flags().StringVar(&smallWordLenArg, "smallest-entity", "", output.SearchHelpTexts["small_word"])
