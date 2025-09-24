@@ -14,7 +14,7 @@ import (
 type EditWordlist struct {
 	isSorted   bool
 	outputPath string
-	tempPaths  []string
+	tempFiles  []*os.File
 }
 
 // NewEditWordlist Creates a new struct for wordlist processing.
@@ -55,7 +55,7 @@ func NewEditWordlist(inputPath, outputPath string, delOriginal bool) (*EditWordl
 	return &EditWordlist{ // creating struct
 		isSorted:   false,
 		outputPath: absoluteOutputPath,
-		tempPaths:  tempList,
+		tempFiles:  tempList,
 	}, nil
 }
 
@@ -64,29 +64,29 @@ func NewEditWordlist(inputPath, outputPath string, delOriginal bool) (*EditWordl
 // channelNewPaths is then passed to the struct as a new array and the isSorted switch is set to true.
 func (wordlist *EditWordlist) ConcurrentSortWordlist() {
 	var threadPool sync.WaitGroup
-	channelNewPaths := make(chan string) // channel to catch new paths
-	for _, unSortPath := range wordlist.tempPaths {
+	channelNewFiles := make(chan *os.File) // channel to catch new paths
+	for _, unSortPath := range wordlist.tempFiles {
 		threadPool.Add(1)
-		go func(p string) {
+		go func(p *os.File) {
 			defer threadPool.Done()
 			result, err := sortWordlist(p)
 			if err != nil {
 				panic(err)
 			}
-			channelNewPaths <- result
+			channelNewFiles <- result
 		}(unSortPath)
 	}
 	go func() { // wait till every GoRoutine is finished
 		threadPool.Wait()
-		close(channelNewPaths)
+		close(channelNewFiles)
 	}()
 
-	var newPaths []string
-	for path := range channelNewPaths {
-		newPaths = append(newPaths, path)
+	var newFiles []*os.File
+	for path := range channelNewFiles {
+		newFiles = append(newFiles, path)
 	}
 	wordlist.isSorted = true
-	wordlist.tempPaths = newPaths
+	wordlist.tempFiles = newFiles
 }
 
 // SortWordlist sorts a wordlist with an external sort algorithm
@@ -101,126 +101,126 @@ func (wordlist *EditWordlist) ConcurrentSortWordlist() {
 //   - EditWordlist: struct with wordlist information
 //   - error: if  path resolve problems, temp path generateing problems, copy problems,
 //     wordlist splitting problems, deleting problems
-func sortWordlist(inputPath string) (string, error) {
-	newTempPath, err := utils.GenerateRandomTempPath()
+func sortWordlist(inputPath *os.File) (*os.File, error) {
+	newTempPath, err := utils.GenerateNewTempFile("Edit_Sort*")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	err = utils.ExternalSort(inputPath, newTempPath)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	err = os.Remove(inputPath)
+	if err := inputPath.Close(); err != nil {
+		return nil, err
+	}
+	err = inputPath.Close() // close and delete old path
 	if err != nil {
-		return "", err
+		return nil, err
+	}
+	err = os.Remove(inputPath.Name())
+	if err != nil {
+		return nil, err
 	}
 	return newTempPath, nil
 }
 
 func (wordlist *EditWordlist) ConcurrentRemoveWordsWithMask(msk string) error {
 	var threadPool sync.WaitGroup
-	channelNewPaths := make(chan string) // channel to catch new paths
+	channelNewFiles := make(chan *os.File) // channel to catch new paths
 
 	mask, err := generator.NewMaskInterpreter(msk)
 	if err != nil {
 		return err
 	}
 
-	for _, unRemoved := range wordlist.tempPaths {
+	for _, unRemoved := range wordlist.tempFiles {
 		threadPool.Add(1)
-		go func(m *generator.MaskInterpreter, p string) {
+		go func(m *generator.MaskInterpreter, f *os.File) {
 			defer threadPool.Done()
-			newPath, err := removeWordsWithMask(m, p)
+			newFile, err := removeWordsWithMask(m, f)
 			if err != nil {
 				panic(err)
 			}
-			channelNewPaths <- newPath
+			channelNewFiles <- newFile
 		}(mask, unRemoved)
 	}
 	go func() { // wait till every GoRoutine is finished
 		threadPool.Wait()
-		close(channelNewPaths)
+		close(channelNewFiles)
 	}()
 
-	var newPaths []string
-	for path := range channelNewPaths {
+	var newPaths []*os.File
+	for path := range channelNewFiles {
 		newPaths = append(newPaths, path)
 	}
 
-	wordlist.tempPaths = newPaths
+	wordlist.tempFiles = newPaths
 	return nil
 }
-func removeWordsWithMask(mask *generator.MaskInterpreter, inputPath string) (string, error) {
-
-	newTempPath, err := utils.GenerateRandomTempPath() //generate new temp path
+func removeWordsWithMask(mask *generator.MaskInterpreter, inputPath *os.File) (*os.File, error) {
+	newFile, err := utils.GenerateNewTempFile("Remove_Mask*") // create new Wordlist
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	currentFile, err := os.Open(inputPath) //open old wordlist
-	if err != nil {
-		return "", err
-	}
-	defer currentFile.Close()
-	newFile, err := os.Create(newTempPath) // create new Wordlist
-	if err != nil {
-		return "", err
-	}
-	defer newFile.Close()
 
 	writer := bufio.NewWriterSize(newFile, 1024*1024) // 1 MB buffer
 	defer writer.Flush()
 
-	scanner := bufio.NewScanner(currentFile)
+	scanner := bufio.NewScanner(inputPath)
 	for scanner.Scan() {
 		if generator.MatchesWord(mask, scanner.Text()) {
 			continue
 		}
 		_, err = writer.WriteString(scanner.Text() + "\n")
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 	if err = scanner.Err(); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	err = os.Remove(inputPath)
+	err = inputPath.Close()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return newTempPath, nil
+	err = os.Remove(inputPath.Name())
+	if err != nil {
+		return nil, err
+	}
+	return newFile, nil
 }
 
 func (wordlist *EditWordlist) ConcurrentRemoveWordsByRange(r string) error {
 	var threadPool sync.WaitGroup
-	channelNewPaths := make(chan string) // channel to catch new paths
+	channelNewFiles := make(chan *os.File) // channel to catch new paths
 
 	uintRange, err := utils.NewUint64Range(r)
 	if err != nil {
 		return err
 	}
-	for _, unRemoved := range wordlist.tempPaths {
+	for _, unRemoved := range wordlist.tempFiles {
 		threadPool.Add(1)
-		go func(r *utils.Uint64Range, p string) {
+		go func(r *utils.Uint64Range, f *os.File) {
 			defer threadPool.Done()
-			newPath, err := removeWordsByRangeUint(r, p)
+			newFile, err := removeWordsByRangeUint(r, f)
 			if err != nil {
 				panic(err)
 			}
-			channelNewPaths <- newPath
+			channelNewFiles <- newFile
 		}(uintRange, unRemoved)
 	}
 	go func() { // wait till every GoRoutine is finished
 		threadPool.Wait()
-		close(channelNewPaths)
+		close(channelNewFiles)
 	}()
 
-	var newPaths []string
-	for path := range channelNewPaths {
-		newPaths = append(newPaths, path)
+	var newFiles []*os.File
+	for file := range channelNewFiles {
+		newFiles = append(newFiles, file)
 	}
 
-	wordlist.tempPaths = newPaths
+	wordlist.tempFiles = newFiles
 	return nil
 }
 
@@ -229,45 +229,27 @@ func (wordlist *EditWordlist) ConcurrentRemoveWordsByRange(r string) error {
 // - If Min is set: words shorter than Min are skipped
 // - If Max is set: words longer than Max are skipped
 // - If both are nil: everything is kept
-func removeWordsByRangeUint(r *utils.Uint64Range, inputPath string) (string, error) {
+func removeWordsByRangeUint(r *utils.Uint64Range, inputFile *os.File) (*os.File, error) {
 	if r == nil {
-		return "", fmt.Errorf("range must not be nil")
+		return nil, fmt.Errorf("range must not be nil")
 	}
 	// Min must not be greater than Max
 	if r.Min != nil && r.Max != nil && *r.Min > *r.Max {
-		return "", fmt.Errorf("the minimum variable must not be greater than the maximum! Min: %d Max: %d", *r.Min, *r.Max)
+		return nil, fmt.Errorf("the minimum variable must not be greater than the maximum! Min: %d Max: %d", *r.Min, *r.Max)
 	}
 
 	// generate a new temporary file path
-	newTempPath, err := utils.GenerateRandomTempPath()
+	newTempFile, err := utils.GenerateNewTempFile("Remove_Range*")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-
-	// create a new file for filtered content
-	newFile, err := os.Create(newTempPath)
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		_ = newFile.Close()
-	}()
-
-	// open the current wordlist file
-	currentFile, err := os.Open(inputPath)
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		_ = currentFile.Close()
-	}()
 
 	// buffered writer for performance (1 MB buffer)
-	writer := bufio.NewWriterSize(newFile, 1024*1024)
+	writer := bufio.NewWriterSize(newTempFile, 1024*1024)
 	defer writer.Flush()
 
 	// scanner with increased buffer size (default 64 KB → bumped to 1 MB)
-	scanner := bufio.NewScanner(currentFile)
+	scanner := bufio.NewScanner(inputFile)
 	buf := make([]byte, 64*1024)
 	scanner.Buffer(buf, 1024*1024)
 
@@ -287,26 +269,30 @@ func removeWordsByRangeUint(r *utils.Uint64Range, inputPath string) (string, err
 
 		// write line to new file if within range
 		if _, err := writer.WriteString(line + "\n"); err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	// remove old file and swap paths
-	if err := os.Remove(inputPath); err != nil {
-		return "", err
+	// remove and close old file and swap paths
+	err = inputFile.Close()
+	if err != nil {
+		return nil, err
 	}
-	return newTempPath, nil
+	if err := os.Remove(inputFile.Name()); err != nil {
+		return nil, err
+	}
+	return newTempFile, nil
 }
 
 func (wordlist *EditWordlist) FlushFinishedWordlist() error {
-	err := utils.MergeWordlists(wordlist.tempPaths, wordlist.outputPath)
+	err := utils.MergeWordlists(wordlist.tempFiles, wordlist.outputPath)
 	if err != nil {
 		return err
 	}
-	err = utils.RemoveSplitWordlist(wordlist.tempPaths)
+	err = utils.RemoveSplitWordlist(wordlist.tempFiles)
 	if err != nil {
 		return err
 	}

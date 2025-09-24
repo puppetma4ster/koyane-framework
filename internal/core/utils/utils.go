@@ -36,19 +36,13 @@ const tempDir = "/tmp/koyane_framework_tmp"
 const AnalyzedWlSaveDir = "~/.koyane_framework_saves"
 const chunkSize = 100000
 
-func ExternalSort(inputPath, outputPath string) error {
+func ExternalSort(inputFile *os.File, outputFile *os.File) error {
 	var tempFiles []string
 
 	err := os.MkdirAll(tempDir, 0755)
 	if err != nil {
 		return err
 	}
-
-	inputFile, err := os.Open(inputPath)
-	if err != nil {
-		return err
-	}
-	defer inputFile.Close()
 
 	scanner := bufio.NewScanner(inputFile)
 	chunkIndex := 0
@@ -57,6 +51,8 @@ func ExternalSort(inputPath, outputPath string) error {
 	if err != nil {
 		return err
 	}
+
+	// Split   and  sort
 	for {
 		var lines []string
 		for len(lines) < chunkSize && scanner.Scan() {
@@ -66,7 +62,7 @@ func ExternalSort(inputPath, outputPath string) error {
 			break
 		}
 
-		sort.Strings(lines) // Unicode
+		sort.Strings(lines)
 		chunkFile := filepath.Join(newTempFolder, fmt.Sprintf("chunk_%d%s", chunkIndex, TempSuffix))
 		f, err := os.Create(chunkFile)
 		if err != nil {
@@ -83,12 +79,6 @@ func ExternalSort(inputPath, outputPath string) error {
 		chunkIndex++
 	}
 
-	//  Merge
-	outputFile, err := os.Create(outputPath)
-	if err != nil {
-		return err
-	}
-	defer outputFile.Close()
 	outWriter := bufio.NewWriter(outputFile)
 
 	files := make([]*os.File, len(tempFiles))
@@ -128,14 +118,16 @@ func ExternalSort(inputPath, outputPath string) error {
 		} else {
 			currentLines[minIdx] = ""
 			files[minIdx].Close()
-			err := os.RemoveAll(newTempFolder)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
 	outWriter.Flush()
+	// removeing chunks
+	err = os.RemoveAll(newTempFolder)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -244,6 +236,14 @@ func GenerateRandomTempPath() (string, error) {
 		}
 	}
 	return "", fmt.Errorf("couldn't create a temporary file")
+}
+
+func GenerateNewTempFile(name string) (*os.File, error) {
+	f, err := os.CreateTemp(tempDir, name+TempSuffix)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
 }
 
 func splitRange(arg string) (string, string, error) {
@@ -409,13 +409,19 @@ func LoadSettings(path string) (*Settings, error) {
 	return &set, nil
 }
 
-func SplitWordlist(inputPath string) ([]string, error) {
-	cfg, err := LoadConfig("config.yaml")
+func SplitWordlist(inputPath string) ([]*os.File, error) {
+	// Load config to determine how many lines each chunk file should contain
+	cfgPath, err := GetConfigPath()
 	if err != nil {
 		return nil, err
 	}
-	var maxLines = cfg.General.MultiThreadFileLines
+	cfg, err := LoadConfig(cfgPath)
+	if err != nil {
+		return nil, err
+	}
+	maxLines := cfg.General.MultiThreadFileLines
 
+	// Resolve and open the input file
 	absInputPath, err := ResolvePath(inputPath)
 	if err != nil {
 		return nil, err
@@ -428,20 +434,16 @@ func SplitWordlist(inputPath string) ([]string, error) {
 	defer mainFile.Close()
 
 	var (
-		tempPath  string
 		tempFile  *os.File
 		writer    *bufio.Writer
-		retPaths  []string
+		retFiles  []*os.File
 		lineIndex uint32
 	)
 
+	// startNew creates a new temporary file and prepares a buffered writer
 	startNew := func() error {
 		var err error
-		tempPath, err = GenerateRandomTempPath()
-		if err != nil {
-			return err
-		}
-		tempFile, err = os.Create(tempPath)
+		tempFile, err = GenerateNewTempFile("split_chunk*")
 		if err != nil {
 			return err
 		}
@@ -457,22 +459,27 @@ func SplitWordlist(inputPath string) ([]string, error) {
 	scanner := bufio.NewScanner(mainFile)
 
 	for scanner.Scan() {
-		if _, err := writer.WriteString(scanner.Text()); err != nil {
-			return nil, err
-		}
-		if _, err := writer.WriteString("\n"); err != nil {
+		// Write the current line into the current chunk
+		if _, err := writer.WriteString(scanner.Text() + "\n"); err != nil {
 			return nil, err
 		}
 		lineIndex++
 
-		if lineIndex >= maxLines { // when temp file is full
+		// If the chunk reached the maximum number of lines → finalize it
+		if lineIndex >= maxLines {
 			if err := writer.Flush(); err != nil {
 				return nil, err
 			}
 			if err := tempFile.Close(); err != nil {
 				return nil, err
 			}
-			retPaths = append(retPaths, tempPath)
+
+			// Reopen in read mode before returning it
+			f, err := os.Open(tempFile.Name())
+			if err != nil {
+				return nil, err
+			}
+			retFiles = append(retFiles, f)
 
 			if err := startNew(); err != nil {
 				return nil, err
@@ -483,6 +490,7 @@ func SplitWordlist(inputPath string) ([]string, error) {
 		return nil, err
 	}
 
+	// Handle the last file (if it has content)
 	if lineIndex > 0 {
 		if err := writer.Flush(); err != nil {
 			return nil, err
@@ -490,17 +498,27 @@ func SplitWordlist(inputPath string) ([]string, error) {
 		if err := tempFile.Close(); err != nil {
 			return nil, err
 		}
-		retPaths = append(retPaths, tempPath)
+
+		f, err := os.Open(tempFile.Name())
+		if err != nil {
+			return nil, err
+		}
+		retFiles = append(retFiles, f)
 	} else {
-		_ = os.Remove(tempPath)
+		// If the last chunk had no lines, remove it
+		os.Remove(tempFile.Name())
 	}
 
-	return retPaths, nil
+	return retFiles, nil
 }
 
-func RemoveSplitWordlist(paths []string) error {
-	for _, path := range paths {
-		err := os.Remove(path)
+func RemoveSplitWordlist(files []*os.File) error {
+	for _, file := range files {
+		err := file.Close() // Close all files
+		if err != nil {
+			return err
+		}
+		err = os.Remove(file.Name()) // delete all files
 		if err != nil {
 			return err
 		}
@@ -508,14 +526,16 @@ func RemoveSplitWordlist(paths []string) error {
 	return nil
 }
 
-// MergeWordlists merges multiple files into a single output file.
-// paths: slice of input file paths
+// MergeWordlists merges multiple open *os.File into a single output file.
+// inputFiles: slice of already opened *os.File
 // outputPath: path to the final merged file
-func MergeWordlists(paths []string, outputPath string) error {
+func MergeWordlists(inputFiles []*os.File, outputPath string) error {
+	// Resolve or create the output file
 	newPath, err := ListPath(outputPath)
 	if err != nil {
 		return err
 	}
+
 	outFile, err := os.Create(newPath)
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
@@ -525,28 +545,23 @@ func MergeWordlists(paths []string, outputPath string) error {
 	writer := bufio.NewWriter(outFile)
 	defer writer.Flush()
 
-	for _, path := range paths {
-		inFile, err := os.Open(path)
-		if err != nil {
-			return fmt.Errorf("failed to open input file %s: %w", path, err)
+	for _, f := range inputFiles {
+		// Reset file offset to start in case it's not at 0
+		if _, err := f.Seek(0, 0); err != nil {
+			return fmt.Errorf("failed to seek input file %s: %w", f.Name(), err)
 		}
 
-		scanner := bufio.NewScanner(inFile)
+		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
 			line := scanner.Text()
-			_, err := writer.WriteString(line + "\n")
-			if err != nil {
-				inFile.Close()
+			if _, err := writer.WriteString(line + "\n"); err != nil {
 				return fmt.Errorf("failed to write line: %w", err)
 			}
 		}
 
 		if err := scanner.Err(); err != nil {
-			inFile.Close()
-			return fmt.Errorf("error reading file %s: %w", path, err)
+			return fmt.Errorf("error reading file %s: %w", f.Name(), err)
 		}
-
-		inFile.Close()
 	}
 
 	return nil
@@ -744,6 +759,7 @@ func GetConfigPath() (string, error) {
 	return configPath, nil
 }
 
+// GetDatabasePath determines the path to the program's database file.
 func GetDatabasePath() (string, error) {
 	var databasePath string = "/var/lib/koyane-framework/wordLists.db"
 	var changed bool = false

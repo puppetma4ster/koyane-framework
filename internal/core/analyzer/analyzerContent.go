@@ -38,40 +38,48 @@ type AnalyzerContent struct {
 	WordsWDigitUpperSpecPercent float32
 }
 
-func NewAnalyzerContent(inputPath string, count, minMax, avLength, charFreq, avEntropy, duplicate, percStats bool) (*AnalyzerContent, error) {
-	var wordlist AnalyzerContent = *NewContentDummy()
+func NewAnalyzerContent(inputFile *os.File, count, minMax, avLength, charFreq, avEntropy, duplicate, percStats bool) (*AnalyzerContent, error) {
+	wordlist := *NewContentDummy()
 
-	absolutePath, err := utils.ResolvePath(inputPath)
-	if err != nil {
-		return nil, err
-	}
+	// fileToRead defaults to inputFile
+	fileToRead := inputFile
+
 	if duplicate {
-		newTempPath, err := utils.GenerateRandomTempPath()
+		// create new temp sorted file
+		sortedFile, err := utils.GenerateNewTempFile("Content_analyzer*")
 		if err != nil {
 			return nil, err
 		}
-		err = utils.ExternalSort(absolutePath, newTempPath)
+		defer sortedFile.Close() // temp file wird geschlossen
+
+		// sort inputFile → sortedFile
+		err = utils.ExternalSort(inputFile, sortedFile)
 		if err != nil {
 			return nil, err
 		}
-		absolutePath = newTempPath
+
+		// reopen sortedFile for reading
+		fileToRead, err = os.Open(sortedFile.Name())
+		if err != nil {
+			return nil, err
+		}
+		defer fileToRead.Close() // sortedFile wird geschlossen, inputFile bleibt offen
 	}
-	file, err := os.Open(absolutePath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	var totalWordLen uint64 = 0
-	var totalEntropy float64 = 0.0
+
+	// scanning & analysis
+	scanner := bufio.NewScanner(fileToRead)
+	buf := make([]byte, 0, 1024*1024)
+	scanner.Buffer(buf, 1024*1024*10)
+
+	var totalWordLen uint64
+	var totalEntropy float64
 	var lastWord string
-	scanner := bufio.NewScanner(file)
-	buf := make([]byte, 0, 1024*1024) // 1 MB initial buffer
-	scanner.Buffer(buf, 1024*1024*10) // Max 10 MB pro Token
+
 	for scanner.Scan() {
-		var word string = scanner.Text()
+		word := scanner.Text()
 
 		if count || avLength {
-			wordlist.WordLines += 1
+			wordlist.WordLines++
 		}
 		if minMax {
 			wordlist.passwordMinMaxInfo(word)
@@ -93,31 +101,29 @@ func NewAnalyzerContent(inputPath string, count, minMax, avLength, charFreq, avE
 			wordlist.wordStats(word)
 		}
 	}
-	if err = scanner.Err(); err != nil {
+
+	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
-	if avLength {
-		if wordlist.WordLines > 0 {
-			wordlist.AvWordLen = float64(totalWordLen) / float64(wordlist.WordLines)
-		} else {
-			wordlist.AvWordLen = 0.0
-		}
 
+	if avLength && wordlist.WordLines > 0 {
+		wordlist.AvWordLen = float64(totalWordLen) / float64(wordlist.WordLines)
 	}
-	if avEntropy {
+	if avEntropy && wordlist.WordLines > 0 {
 		wordlist.AvEntropy = totalEntropy / float64(wordlist.WordLines)
 	}
 	if percStats {
 		wordlist.statsInPercent()
 	}
+
+	// remove temp sorted file
 	if duplicate {
-		err = os.Remove(absolutePath)
-		if err != nil {
-			return nil, err
-		}
+		os.Remove(fileToRead.Name())
 	}
+
 	return &wordlist, nil
 }
+
 func NewContentDummy() *AnalyzerContent {
 	return &AnalyzerContent{
 		WordLines:                   0,
@@ -336,23 +342,23 @@ func mergeContentAnalyzers(wordlist1, wordlist2 *AnalyzerContent) *AnalyzerConte
 }
 
 func ConcurrentContentAnalyzer(inputPath string, count, minMax, avLength, charFreq, avEntropy, duplicate, percStats bool) (*AnalyzerContent, error) {
-	tempPaths, err := utils.SplitWordlist(inputPath) // splitting wordlist into pices
+	tempFiles, err := utils.SplitWordlist(inputPath) // splitting wordlist into pices
 	if err != nil {
 		return nil, err
 	}
 	var threadPool sync.WaitGroup
 	channelContent := make(chan *AnalyzerContent)
 
-	for _, tempPath := range tempPaths { // starting GoRoutines (threads)
+	for _, tempFile := range tempFiles { // starting GoRoutines (threads)
 		threadPool.Add(1)
-		go func(path string) {
+		go func(path *os.File) {
 			defer threadPool.Done()
 			conResult, err := NewAnalyzerContent(path, count, minMax, avLength, charFreq, avEntropy, duplicate, percStats)
 			if err != nil {
 				panic(err)
 			}
 			channelContent <- conResult
-		}(tempPath)
+		}(tempFile)
 	}
 
 	go func() { // wait till every GoRoutine is finished
@@ -365,7 +371,7 @@ func ConcurrentContentAnalyzer(inputPath string, count, minMax, avLength, charFr
 		contentResults = append(contentResults, content)
 
 	}
-	err = utils.RemoveSplitWordlist(tempPaths) // delete old tempfiles
+	err = utils.RemoveSplitWordlist(tempFiles) // delete old tempfiles
 	if err != nil {
 		return nil, err
 	}

@@ -9,11 +9,17 @@ SETTINGS_FILE = ./settings.yaml
 # Build directory (current directory)
 BUILD_DIR = .
 
-# Standard installation paths
-BIN_PATH = /usr/local/bin          # where the binary will be installed
-CONFIG_PATH = /etc/koyane-framework  # system-wide config
-DB_PATH = /var/lib/koyane-framework  # system-wide database
-SETTINGS_PATH = ~/.config/koyane-framework  # user-specific settings
+### Standard installation paths
+# where the binary will be installed
+BIN_PATH := /usr/local/bin
+# system-wide config
+CONFIG_PATH := /etc/koyane-framework
+# system-wide database
+DB_PATH := /var/lib/koyane-framework
+# user-specific settings
+SETTINGS_PATH := ~/.config/koyane-framework
+# user saves
+SAVE_PATH = ~/.koyane_framework_saves
 
 # -------------------------
 # Build target: compiles the program
@@ -48,7 +54,20 @@ clean:
 # Uninstall target: removes all installed files and directories
 # -------------------------
 uninstall:
-	rm -f $(BIN_PATH)
+	@echo "Uninstalling..."
+	@echo ""
+	@echo "Uninstall binary..."
+	rm -f "$(BIN_PATH)/$(BINARY)"
+	@echo "Done!"
+	@echo "Uninstall configurations..."
 	rm -rf $(CONFIG_PATH)
+	@echo "Done!"
+	@echo "Uninstall databases..."
 	rm -rf $(DB_PATH)
+	@echo "Done!"
+	@echo "Uninstall Setting Files..."
 	rm -rf $(SETTINGS_PATH)
+	@echo "Done!"
+	@echo "Uninstall Save Files..."
+	rm -rf $(SAVE_PATH)
+	@echo "Done!"
