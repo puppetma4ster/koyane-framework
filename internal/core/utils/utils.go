@@ -221,6 +221,9 @@ func HumanReadableBytes(bytes uint64) string {
 	return fmt.Sprintf("%.2f PB", f)
 }
 
+// Deprecated: GenerateRandomTempPath
+// use GenerateNewTempFile instead
+// GenerateRandomTempPath proved to be extremely unstable, especially when there were many tempfiles in the directory.
 func GenerateRandomTempPath() (string, error) {
 	const randRange = 10_000_000
 	const maxAttempts = 10000
@@ -526,6 +529,12 @@ func RemoveSplitWordlist(files []*os.File) error {
 	return nil
 }
 
+func CloseAllFiles(f []*os.File) {
+	for _, file := range f {
+		file.Close() // funktioniert, weil file vom Typ *os.File ist
+	}
+}
+
 // MergeWordlists merges multiple open *os.File into a single output file.
 // inputFiles: slice of already opened *os.File
 // outputPath: path to the final merged file
@@ -569,7 +578,7 @@ func MergeWordlists(inputFiles []*os.File, outputPath string) error {
 
 // formatIntWithCommas returns an int64 as string with commas as thousands separators.
 func formatIntWithCommas(n int64) string {
-	// Negative Zahlen behandeln
+	// Negative Numbers...
 	negative := n < 0
 	if negative {
 		n = -n
@@ -592,6 +601,23 @@ func formatIntWithCommas(n int64) string {
 	if negative {
 		return "-" + out
 	}
+	return out
+}
+
+// FormatUint64WithCommas returns a uint64 as string with commas as thousands separators.
+func FormatUint64WithCommas(n uint64) string {
+	s := strconv.FormatUint(n, 10) // uint64 -> string
+
+	out := ""
+	count := 0
+	for i := len(s) - 1; i >= 0; i-- {
+		out = string(s[i]) + out
+		count++
+		if count%3 == 0 && i != 0 {
+			out = "," + out
+		}
+	}
+
 	return out
 }
 

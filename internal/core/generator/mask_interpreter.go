@@ -70,3 +70,21 @@ func MatchesWord(mask *MaskInterpreter, word string) bool {
 	}
 	return true
 }
+
+// MaskSplitter Split masks into several partial masks to ensure parallelization.
+//
+// Returns:
+//   - []*MaskInterpreter: array with partial masks of the original
+func (mask *MaskInterpreter) MaskSplitter() []*MaskInterpreter {
+	var masks []*MaskInterpreter
+
+	for _, char := range mask.MaskSegments[0].PermittedCharacters {
+		copyVal := *mask
+		copyVal.MaskSegments = append([]MaskChar(nil), mask.MaskSegments...)
+		copyVal.MaskSegments[0].PermittedCharacters = string(char)
+		newMask := copyVal
+		masks = append(masks, &newMask)
+	}
+
+	return masks
+}

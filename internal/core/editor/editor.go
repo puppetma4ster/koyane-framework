@@ -157,7 +157,7 @@ func (wordlist *EditWordlist) ConcurrentRemoveWordsWithMask(msk string) error {
 	wordlist.tempFiles = newPaths
 	return nil
 }
-func removeWordsWithMask(mask *generator.MaskInterpreter, inputPath *os.File) (*os.File, error) {
+func removeWordsWithMask(mask *generator.MaskInterpreter, inputFIle *os.File) (*os.File, error) {
 	newFile, err := utils.GenerateNewTempFile("Remove_Mask*") // create new Wordlist
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func removeWordsWithMask(mask *generator.MaskInterpreter, inputPath *os.File) (*
 	writer := bufio.NewWriterSize(newFile, 1024*1024) // 1 MB buffer
 	defer writer.Flush()
 
-	scanner := bufio.NewScanner(inputPath)
+	scanner := bufio.NewScanner(inputFIle)
 	for scanner.Scan() {
 		if generator.MatchesWord(mask, scanner.Text()) {
 			continue
@@ -180,11 +180,11 @@ func removeWordsWithMask(mask *generator.MaskInterpreter, inputPath *os.File) (*
 		return nil, err
 	}
 
-	err = inputPath.Close()
+	err = inputFIle.Close()
 	if err != nil {
 		return nil, err
 	}
-	err = os.Remove(inputPath.Name())
+	err = os.Remove(inputFIle.Name())
 	if err != nil {
 		return nil, err
 	}
@@ -285,6 +285,171 @@ func removeWordsByRangeUint(r *utils.Uint64Range, inputFile *os.File) (*os.File,
 		return nil, err
 	}
 	return newTempFile, nil
+}
+
+func (wordlist *EditWordlist) ConcurrentFilterEuropeanLines() {
+	var threadPool sync.WaitGroup
+	channelNewFiles := make(chan *os.File) // channel to catch new paths
+
+	for _, unFiltered := range wordlist.tempFiles {
+		threadPool.Add(1)
+		go func(f *os.File) {
+			defer threadPool.Done()
+			newFile, err := filterEuropeanLines(f)
+			if err != nil {
+				panic(err)
+			}
+			channelNewFiles <- newFile
+		}(unFiltered)
+	}
+
+	go func() { // wait till every GoRoutine is finished
+		threadPool.Wait()
+		close(channelNewFiles)
+	}()
+
+	var newFiles []*os.File
+	for file := range channelNewFiles {
+		newFiles = append(newFiles, file)
+	}
+
+	wordlist.tempFiles = newFiles
+}
+
+// filterEuropeanLines checks whether a character is likely to exist in European language usage
+// valid Character Encodings are:
+//   - ASCII
+//   - Latin-1 Supplement
+//   - Latin Extended-A and B
+//   - Latin Extended Additional
+//   - control characters
+//
+// invalid Character Encodings are:
+//   - Chinese
+//   - Korean
+//   - Armenian
+//   - Emojis
+//   - some IPA Extensions
+//   - some Spacing Modifier
+//   - Mathematical symbols (+, -, =, :, ... are VALID!)
+func filterEuropeanLines(inputFile *os.File) (*os.File, error) {
+	newFile, err := utils.GenerateNewTempFile("Filter_European*") // create new Wordlist
+	if err != nil {
+		return nil, err
+	}
+
+	isEuropeanRune := func(char rune) bool {
+		return (char >= 0x0000 && char <= 0x024F) || (char >= 0x1E00 && char <= 0x1EFF)
+	}
+
+	writer := bufio.NewWriterSize(newFile, 1024*1024) // 1 MB buffer
+	defer writer.Flush()
+
+	scanner := bufio.NewScanner(inputFile)
+
+outer:
+	for scanner.Scan() {
+		for _, char := range scanner.Text() {
+			if !isEuropeanRune(char) {
+				continue outer
+			}
+		}
+		if _, err = writer.WriteString(scanner.Text() + "\n"); err != nil {
+			return nil, err
+		}
+	}
+
+	if err = scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	// Close and delete old file
+	if err = inputFile.Close(); err != nil {
+		return nil, err
+	}
+	if err = os.Remove(inputFile.Name()); err != nil {
+		return nil, err
+	}
+
+	return newFile, nil
+}
+
+func (wordlist *EditWordlist) ConcurrentRemoveLinesWithChars(chars string) {
+	var threadPool sync.WaitGroup
+	channelNewFiles := make(chan *os.File) // channel to catch new paths
+
+	for _, unFiltered := range wordlist.tempFiles {
+		threadPool.Add(1)
+		go func(c string, f *os.File) {
+			defer threadPool.Done()
+			newFile, err := removeLinesWithChars(c, f)
+			if err != nil {
+				panic(err)
+			}
+			channelNewFiles <- newFile
+		}(chars, unFiltered)
+	}
+
+	go func() { // wait till every GoRoutine is finished
+		threadPool.Wait()
+		close(channelNewFiles)
+	}()
+
+	var newFiles []*os.File
+	for file := range channelNewFiles {
+		newFiles = append(newFiles, file)
+	}
+
+	wordlist.tempFiles = newFiles
+}
+
+// removeLinesWithChars deletes all lines containing characters that are also in @param = chars
+//
+// Parameters:
+//   - chars: characters that may not appear in the line
+//   - inputFile: the file in which the deletion is supposed to take
+//
+// Returns:
+//   - *os.File: the cleaned-up file
+//   - error: error messages
+func removeLinesWithChars(chars string, inputFile *os.File) (*os.File, error) {
+	newFile, err := utils.GenerateNewTempFile("Filter_European*") // create new Wordlist
+	if err != nil {
+		return nil, err
+	}
+
+	writer := bufio.NewWriterSize(newFile, 1024*1024) // 1 MB buffer
+	defer writer.Flush()
+
+	scanner := bufio.NewScanner(inputFile)
+
+outer:
+	for scanner.Scan() {
+		for _, char := range scanner.Text() {
+			for _, forbiddenChar := range chars {
+				if char == forbiddenChar {
+					continue outer
+				}
+			}
+		}
+		if _, err = writer.WriteString(scanner.Text() + "\n"); err != nil {
+			return nil, err
+		}
+	}
+
+	if err = scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	// Close and delete old file
+	if err = inputFile.Close(); err != nil {
+		return nil, err
+	}
+	if err = os.Remove(inputFile.Name()); err != nil {
+		return nil, err
+	}
+
+	return newFile, nil
 }
 
 func (wordlist *EditWordlist) FlushFinishedWordlist() error {

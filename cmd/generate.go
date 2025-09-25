@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/puppetma4ster/koyane-framework/internal/core/generator"
 	"github.com/puppetma4ster/koyane-framework/internal/core/utils"
 	"github.com/puppetma4ster/koyane-framework/internal/output"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 var (
@@ -28,16 +29,26 @@ var generateCmd = &cobra.Command{
 				output.PrintError("errors", "error", err)
 				os.Exit(1)
 			}
-			output.PrintStatus("statusGenerator", "calculateWords", entities)
+			output.PrintStatus("statusGenerator", "calculateWords", utils.FormatUint64WithCommas(entities))
 			output.PrintStatus("statusGenerator", "calculateSize", utils.HumanReadableBytes(bytes))
 			output.PrintStatus("statusGenerator", "buildingMaskWordlist", mask)
-			err = generator.GenerateMaskWordlist(mask, outputPath)
+
+			err = generator.ConcurrentGenerateMaskWordlist(mask, outputPath)
 			if err != nil {
 				output.PrintError("errors", "error", err)
 				os.Exit(1)
 			}
 		} else {
-			err := generator.GenerateMaskWordlist(mask, outputPath, minLength)
+			entities, bytes, err := generator.CalculateMaskStorage(mask)
+			if err != nil {
+				output.PrintError("errors", "error", err)
+				os.Exit(1)
+			}
+			output.PrintStatus("statusGenerator", "calculateWords", utils.FormatUint64WithCommas(entities))
+			output.PrintStatus("statusGenerator", "calculateSize", utils.HumanReadableBytes(bytes))
+			output.PrintStatus("statusGenerator", "buildingMaskWordlist", mask)
+
+			err = generator.ConcurrentGenerateMaskWordlist(mask, outputPath, minLength)
 			if err != nil {
 				output.PrintError("errors", "error", err)
 				os.Exit(1)

@@ -28,7 +28,7 @@ var StatusMessages = map[string]StatusCategory{
 	"statusGenerator": {
 		Prefix: "[*]",
 		Messages: map[string]string{
-			"calculateWords":       "Final wordlist has %d entries.",
+			"calculateWords":       "Final wordlist has %s entries.",
 			"calculateSize":        "Final wordlist size: %s",
 			"buildingMaskWordlist": "Building wordlist using the following mask: '%s'",
 			"wordlist_stats":       "The wordlist contains %d entries and is approximately %s bytes in size",

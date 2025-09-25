@@ -12,6 +12,8 @@ var (
 	sortArg           bool
 	removeMaskArg     string
 	removeRangeArg    string
+	removeCharArg     string
+	europeanArg       bool
 	deleteOriginalArg bool
 )
 var editCmd = &cobra.Command{
@@ -44,6 +46,13 @@ var editCmd = &cobra.Command{
 				os.Exit(1)
 			}
 		}
+		if europeanArg {
+			wordlist.ConcurrentFilterEuropeanLines()
+		}
+		if cmd.Flags().Changed("remove-chars") {
+			wordlist.ConcurrentRemoveLinesWithChars(removeCharArg)
+		}
+
 		err = wordlist.FlushFinishedWordlist()
 		if err != nil {
 			output.PrintError("errors", "error", err)
@@ -59,6 +68,8 @@ func init() {
 	editCmd.Flags().BoolVarP(&sortArg, "sort", "s", false, output.GenerateEditHelpTexts["sort"])
 	editCmd.Flags().StringVarP(&removeMaskArg, "remove-mask", "m", "", output.GenerateEditHelpTexts["removeMask"])
 	editCmd.Flags().StringVarP(&removeRangeArg, "remove-range", "r", "", output.GenerateEditHelpTexts["removeMask"])
+	editCmd.Flags().StringVarP(&removeCharArg, "remove-chars", "c", "", output.GenerateEditHelpTexts["removeChars"])
+	editCmd.Flags().BoolVar(&europeanArg, "european", false, output.GenerateEditHelpTexts["european"])
 	editCmd.Flags().BoolVarP(&deleteOriginalArg, "delete", "d", false, output.GenerateEditHelpTexts["delete"])
 
 }
