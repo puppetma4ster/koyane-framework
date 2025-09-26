@@ -17,12 +17,46 @@ The project is named after *Ame-no-Koyane*, a kami (deity) in Japanese mythology
 
 ---
 ## Installation
-## Makefile (recommended)
-clone this repo:
+## Makefile (recommended) koyane-framework 0.7.0-beta
+The installation has only been tested on Linux operating systems so far. 
+Due to the program's path handling, it will probably not be able to run on Windows.
+Future versions are also planned to be compatible with Windows.
+
+#### requirements 
+- [golang](https://go.dev/) >= 1.24.0
+- [make](https://www.gnu.org/software/make/
+
+Debian, Ubuntu:
 ```bash
-git clone https://gitlab.com/puppetm4ster/koyane-framework
+sudo apt update
+sudo apt install build-essential
 ```
-### From pypi (outdated)
+- Other used go libs are automatically downloaded from the source code during compilation.
+
+Download the last version -> unzip the directory -> go into program directory:
+```bash
+wget https://gitlab.com/puppetm4ster/koyane-framework/-/archive/0.7.0-beta/koyane-framework-0.7.0-beta.zip?ref_type=tags
+unzip koyane-framework-0.7.0-beta.zip\?ref_type\=tags
+cd koyane-framework-0.7.0-beta
+```
+you can use the **auto_install.sh** for installing
+```bash
+sudo chmod +x auto_install.sh
+sudo ./auto_install.sh
+```
+or install manually with make
+```bash
+make build
+sudo make install
+make clean
+```
+#### Uninstall
+
+Go to the project directory where the **Makefile** is located and run:
+```bash
+sudo make uninstalling koyane-framework
+```
+### From pypi **(outdated)** koyane-framework 0.2.0-alpha
 #### This version is NOT recommended!
 #### The pipy version was a very early alpha release.This version is NOT recommended.
 You can install the latest build directly with pip:
@@ -31,9 +65,9 @@ You can install the latest build directly with pip:
 pip install koyaneframework
 ```
 
-## Status: Pre-Alpha
+## Status: Beta
 
-The project is in a very early stage of development. Functionality is limited and subject to change.
+The project is in a early stage of development. Functionality is limited and subject to change.
 This is my very first coding project so i am grateful for every improvement suggestion at **puppetma4ster@proton.me**
 I try to update the project once a week.
 ---
@@ -53,12 +87,9 @@ I try to update the project once a week.
 - Word mutation, filtering, or combinator logic
 - Deduplication and merging
 - TUI or rich CLI frontend
-- Performance optimizations (parallelization, mmap, low-level backend)
 - Contextual generation based on target information (name, location, job, hobbies, birthday...)
 - extract and build rules out of wordlists
-- Mask generation supports wildcards such as ?d for digits,
   and fixed character segments using ! (e.g. !A for 'A', !abc123 for custom sets).
-- Search functionality for wordlists (like `search type:ftp` in Metasploit).
 - Building a console version of Koyane with **prompt_toolkik**
 
 ---
