@@ -24,7 +24,7 @@ Future versions are also planned to be compatible with Windows.
 
 #### requirements 
 - [golang](https://go.dev/) >= 1.24.0
-- [make](https://www.gnu.org/software/make/
+- [make](https://www.gnu.org/software/make/)
 
 Debian, Ubuntu:
 ```bash
@@ -33,12 +33,14 @@ sudo apt install build-essential
 ```
 - Other used go libs are automatically downloaded from the source code during compilation.
 
+#### Download
 Download the last version -> unzip the directory -> go into program directory:
 ```bash
 wget https://gitlab.com/puppetm4ster/koyane-framework/-/archive/0.7.0-beta/koyane-framework-0.7.0-beta.zip?ref_type=tags
 unzip koyane-framework-0.7.0-beta.zip\?ref_type\=tags
 cd koyane-framework-0.7.0-beta
 ```
+#### Build & Installation
 you can use the **auto_install.sh** for installing
 ```bash
 sudo chmod +x auto_install.sh
@@ -56,41 +58,65 @@ Go to the project directory where the **Makefile** is located and run:
 ```bash
 sudo make uninstalling koyane-framework
 ```
+---------------------------------------------
+
 ### From pypi **(outdated)** koyane-framework 0.2.0-alpha
-#### This version is NOT recommended!
-#### The pipy version was a very early alpha release.This version is NOT recommended.
+##### This version is NOT recommended!
+##### The pipy version was a very early alpha release.This version is NOT recommended.
 You can install the latest build directly with pip:
 
 ```bash
 pip install koyaneframework
 ```
 
+---------------------------------------------
 ## Status: Beta
 
 The project is in a early stage of development. Functionality is limited and subject to change.
-This is my very first coding project so i am grateful for every improvement suggestion at **puppetma4ster@proton.me**
+This is my very first bigger coding project so i am grateful for every improvement suggestion at **puppetma4ster@proton.me**
 I try to update the project once a week.
 ---
 
 ## Features
 
-+ Basic wordlist analysis (line count, word length stats, complexity metrics)
-+ Charset-based generation with configurable min/max length
-+ Partial support for mask-based generation
-+ Basic wordlist sorting
-+ CLI interface powered by Typer
+The program serves as a helpful framework for developing, editing, analyzing, and finding word lists for
+password hash analysis, directory discovery, web fuzzing, and much more.
+The following features are listed per module:
+
+
+### 1. Generation
++ support for mask-based generation with multiple wildcards using ?d (digits) and
+  fixed character segments using ! (e.g. !A for 'A', !abc123 for custom sets).
+
+### 2. Editing
++ wordlist sorting
++ remove words by length
++ remove words who match a mask
++ remove words containing given characters
++ filter all words that are not in european chars
+
+### 3. Analyzing
++ analyze basic word list info
++ line count
++ word length statistics
++ complexity metrics
++ char statistics and frequency
+
+### 4. Finding outer word lists
++ search and filter stats from outer word lists
++ download them from terminal
+
+### General Features
++ CLI interface
 + Basic status messages
-+ find outher wordlists, see there stats and download them
 
 **Not yet implemented:**
 
-- Word mutation, filtering, or combinator logic
 - Deduplication and merging
 - TUI or rich CLI frontend
 - Contextual generation based on target information (name, location, job, hobbies, birthday...)
 - extract and build rules out of wordlists
-  and fixed character segments using ! (e.g. !A for 'A', !abc123 for custom sets).
-- Building a console version of Koyane with **prompt_toolkik**
+- console version
 
 ---
 
@@ -108,7 +134,18 @@ Koyane aims to become a fast, modular, and scriptable framework for:
 ## Example Usage
 
 ```bash
-koyane [command] flags(s)
+koyane-framework [command] flags(s)
+
+koyane-framework generate -M !AS?l?l?l?lL?d?d?! ~/MyList
+
+koyane-framework edit -r 8:* --european ~/MyList ~/EditList
+
+koyane-framework search --biggest-word 8:14 --smallest-word 8:8 --digits-perc 30.0:*
+
+koyane-framework show 22
+
+koyane-framework get -p ~/OuterList 22
+
 ```
 ---
 ## License
