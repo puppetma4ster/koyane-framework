@@ -87,15 +87,15 @@ func PrintWordlistsTableAll(results []utils.Wordlist) {
 			wl.Entities,
 			wl.SmallestEntity,
 			wl.BiggestEntity,
-			wl.AverageLength,
-			wl.AverageEntropy,
-			wl.DigitsPercent,
-			wl.UpperCasePercent,
-			wl.SpecialCharPercent,
-			wl.DigitAndUpperCase,
-			wl.DigitAndSpecialChar,
-			wl.UpperCaseAndSpecialChar,
-			wl.DigitUpperCaseAndSpecial,
+			fmt.Sprintf("%.2f", wl.AverageLength),
+			fmt.Sprintf("%.2f", wl.AverageEntropy),
+			fmt.Sprintf("%.2f", wl.DigitsPercent),
+			fmt.Sprintf("%.2f", wl.UpperCasePercent),
+			fmt.Sprintf("%.2f", wl.SpecialCharPercent),
+			fmt.Sprintf("%.2f", wl.DigitAndUpperCase),
+			fmt.Sprintf("%.2f", wl.DigitAndSpecialChar),
+			fmt.Sprintf("%.2f", wl.UpperCaseAndSpecialChar),
+			fmt.Sprintf("%.2f", wl.DigitUpperCaseAndSpecial),
 			wl.Encoding,
 			wl.Language,
 			wl.Category,
@@ -146,14 +146,14 @@ func PrintWordlistsTableDefault(results []utils.Wordlist) {
 			wl.Entities,
 			wl.SmallestEntity,
 			wl.BiggestEntity,
-			wl.AverageLength,
-			wl.DigitsPercent,
-			wl.UpperCasePercent,
-			wl.SpecialCharPercent,
-			wl.DigitAndUpperCase,
-			wl.DigitAndSpecialChar,
-			wl.UpperCaseAndSpecialChar,
-			wl.DigitUpperCaseAndSpecial,
+			fmt.Sprintf("%.2f", wl.AverageLength),
+			fmt.Sprintf("%.2f", wl.DigitsPercent),
+			fmt.Sprintf("%.2f", wl.UpperCasePercent),
+			fmt.Sprintf("%.2f", wl.SpecialCharPercent),
+			fmt.Sprintf("%.2f", wl.DigitAndUpperCase),
+			fmt.Sprintf("%.2f", wl.DigitAndSpecialChar),
+			fmt.Sprintf("%.2f", wl.UpperCaseAndSpecialChar),
+			fmt.Sprintf("%.2f", wl.DigitUpperCaseAndSpecial),
 			wl.Category,
 			utils.HumanReadableBytes(uint64(wl.Size)),
 		})
@@ -221,7 +221,13 @@ func PrintWordlistsTableStats(results []utils.Wordlist) {
 
 	for _, wl := range results {
 		t.AppendRow(table.Row{
-			wl.ID, wl.Name, wl.Entities, wl.SmallestEntity, wl.BiggestEntity, wl.AverageLength, wl.AverageEntropy,
+			wl.ID,
+			wl.Name,
+			wl.Entities,
+			wl.SmallestEntity,
+			wl.BiggestEntity,
+			fmt.Sprintf("%.2f", wl.AverageLength),
+			fmt.Sprintf("%.2f", wl.AverageEntropy),
 		})
 	}
 
@@ -255,8 +261,13 @@ func PrintWordlistsTableChars(results []utils.Wordlist) {
 	for _, wl := range results {
 		t.AppendRow(table.Row{
 			wl.ID, wl.Name,
-			wl.DigitsPercent, wl.UpperCasePercent, wl.SpecialCharPercent,
-			wl.DigitAndUpperCase, wl.DigitAndSpecialChar, wl.UpperCaseAndSpecialChar, wl.DigitUpperCaseAndSpecial,
+			fmt.Sprintf("%.2f", wl.DigitsPercent),
+			fmt.Sprintf("%.2f", wl.UpperCasePercent),
+			fmt.Sprintf("%.2f", wl.SpecialCharPercent),
+			fmt.Sprintf("%.2f", wl.DigitAndUpperCase),
+			fmt.Sprintf("%.2f", wl.DigitAndSpecialChar),
+			fmt.Sprintf("%.2f", wl.UpperCaseAndSpecialChar),
+			fmt.Sprintf("%.2f", wl.DigitUpperCaseAndSpecial),
 		})
 	}
 

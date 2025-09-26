@@ -24,7 +24,7 @@ var rootCmd = &cobra.Command{
 	Long:  output.GenerateRootHelpTexts["long"],
 	Run: func(cmd *cobra.Command, args []string) {
 		if versionArg {
-			fmt.Println("koyane-framework 0.0.9")
+			fmt.Println("koyane-framework 0.7.0-beta")
 		} else {
 			err := cmd.Help() // printing help when no command is specified
 			if err != nil {

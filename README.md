@@ -1,11 +1,12 @@
 # Koyane-Framework :: wordlist forge & analysis toolkit (Early Stage)
 
 ```
-     __ ____  ________
-    / //_/\ \/ / ____/
-   / , <    \  / /_    
-  / /| |   / / __/    
- /_/ |_|  /_/_/      
+ _   __ _____ __   __  ___   _   _  _____         ______ ______   ___  ___  ___ _____  _    _  _____ ______  _   __
+| | / /|  _  |\ \ / / / _ \ | \ | ||  ___|        |  ___|| ___ \ / _ \ |  \/  ||  ___|| |  | ||  _  || ___ \| | / /
+| |/ / | | | | \ V / / /_\ \|  \| || |__   ______ | |_   | |_/ // /_\ \| .  . || |__  | |  | || | | || |_/ /| |/ /
+|    \ | | | |  \ /  |  _  || . ` ||  __| |______||  _|  |    / |  _  || |\/| ||  __| | |/\| || | | ||    / |    \
+| |\  \\ \_/ /  | |  | | | || |\  || |___         | |    | |\ \ | | | || |  | || |___ \  /\  /\ \_/ /| |\ \ | |\  \
+\_| \_/ \___/   \_/  \_| |_/\_| \_/\____/         \_|    \_| \_|\_| |_/\_|  |_/\____/  \/  \/  \___/ \_| \_|\_| \_/   
  Koyane-Framework :: wordlist forge & analysis toolkit
  made by Puppetm4ster
 ```                   
@@ -16,11 +17,14 @@ The project is named after *Ame-no-Koyane*, a kami (deity) in Japanese mythology
 
 ---
 ## Installation
-
-### 📦 From pypi (Recommended)
-
-#### There is currently no fully functional version of the program available.
-#### The pipy version was a very early alpha release. However, since the program has been remastered in Go, this version is NOT recommended.
+## Makefile (recommended)
+clone this repo:
+```bash
+git clone https://gitlab.com/puppetm4ster/koyane-framework
+```
+### From pypi (outdated)
+#### This version is NOT recommended!
+#### The pipy version was a very early alpha release.This version is NOT recommended.
 You can install the latest build directly with pip:
 
 ```bash

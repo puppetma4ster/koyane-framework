@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/puppetma4ster/koyane-framework/internal/core/editor"
+	"github.com/puppetma4ster/koyane-framework/internal/core/utils"
 	"github.com/puppetma4ster/koyane-framework/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -24,6 +25,15 @@ var editCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		inputPath := args[0]
 		outputPath := args[1]
+
+		outputPath, err := utils.OverwriteFile(outputPath)
+		if err != nil {
+			output.PrintError("errors", "error", err)
+			os.Exit(1)
+		}
+
+		stop := make(chan struct{})
+		go output.Spinner("Analyze File", stop)
 
 		wordlist, err := editor.NewEditWordlist(inputPath, outputPath, deleteOriginalArg)
 		if err != nil {
@@ -59,6 +69,7 @@ var editCmd = &cobra.Command{
 			os.Exit(1)
 
 		}
+		close(stop)
 	},
 }
 
@@ -67,7 +78,7 @@ func init() {
 
 	editCmd.Flags().BoolVarP(&sortArg, "sort", "s", false, output.GenerateEditHelpTexts["sort"])
 	editCmd.Flags().StringVarP(&removeMaskArg, "remove-mask", "m", "", output.GenerateEditHelpTexts["removeMask"])
-	editCmd.Flags().StringVarP(&removeRangeArg, "remove-range", "r", "", output.GenerateEditHelpTexts["removeMask"])
+	editCmd.Flags().StringVarP(&removeRangeArg, "remove-range", "r", "", output.GenerateEditHelpTexts["removeRange"])
 	editCmd.Flags().StringVarP(&removeCharArg, "remove-chars", "c", "", output.GenerateEditHelpTexts["removeChars"])
 	editCmd.Flags().BoolVar(&europeanArg, "european", false, output.GenerateEditHelpTexts["european"])
 	editCmd.Flags().BoolVarP(&deleteOriginalArg, "delete", "d", false, output.GenerateEditHelpTexts["delete"])

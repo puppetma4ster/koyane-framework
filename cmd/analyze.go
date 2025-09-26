@@ -24,6 +24,9 @@ var analyzeCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		inputPath := args[0]
 
+		stop := make(chan struct{})
+		go output.Spinner("Analyze File", stop)
+
 		if allArg || generalArg && contentArg && statsArg {
 			general, err := analyzer.NewGeneralAnalyzer(inputPath)
 			if err != nil {
@@ -117,6 +120,7 @@ var analyzeCmd = &cobra.Command{
 				printer.FlushStats()
 			}
 		}
+		close(stop)
 	},
 }
 

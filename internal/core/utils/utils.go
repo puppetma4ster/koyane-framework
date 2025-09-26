@@ -3,7 +3,6 @@ package utils
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -621,26 +620,6 @@ func FormatUint64WithCommas(n uint64) string {
 	return out
 }
 
-func CopyFileToTemp(inputPath, outputPath string) error {
-	inputFile, err := os.Open(inputPath)
-	if err != nil {
-		return err
-	}
-	defer inputFile.Close()
-
-	outputFile, err := os.Create(outputPath)
-	if err != nil {
-		return err
-	}
-	defer outputFile.Close()
-
-	_, err = io.Copy(outputFile, inputFile)
-	if err != nil {
-		return err
-	}
-	return outputFile.Sync()
-}
-
 func NotInSlice(slice []string, value string) bool {
 	for _, v := range slice {
 		if v == value {
@@ -724,14 +703,14 @@ func PrintRuneMapColumns(m map[rune]uint64, columns int) string {
 	return builder.String()
 }
 
-// fileExists checks if an file exists
+// FileExists checks if a file exists
 //
 // Parameters:
 //   - path: the path to the file to be tested
 //
 // Returns:
 //   - bool: true if file exists and false if it doesn't
-func fileExists(path string) bool {
+func FileExists(path string) bool {
 	_, err := os.Stat(path)
 	if err == nil {
 		// file exists
@@ -762,7 +741,7 @@ func GetConfigPath() (string, error) {
 		return "", err
 	}
 	settingsPath := filepath.Join(home, ".config/koyane-framework/settings.yaml")
-	if fileExists(settingsPath) {
+	if FileExists(settingsPath) {
 		set, err := LoadSettings(settingsPath)
 		if err != nil {
 			return "", err
@@ -777,7 +756,7 @@ func GetConfigPath() (string, error) {
 		changed = true
 	}
 	if !changed {
-		if !fileExists(configPath) {
+		if !FileExists(configPath) {
 			return "", fmt.Errorf("there is no config path found as environment variable, "+
 				"user home and default path: %s", configPath)
 		}
@@ -796,7 +775,7 @@ func GetDatabasePath() (string, error) {
 		return "", err
 	}
 	settingsPath := filepath.Join(home, ".config/koyane-framework/settings.yaml")
-	if fileExists(settingsPath) {
+	if FileExists(settingsPath) {
 		set, err := LoadSettings(settingsPath)
 		if err != nil {
 			return "", err
@@ -811,10 +790,70 @@ func GetDatabasePath() (string, error) {
 		changed = true
 	}
 	if !changed {
-		if !fileExists(databasePath) {
+		if !FileExists(databasePath) {
 			return "", fmt.Errorf("there is no config path found as environment variable, "+
 				"user home and default path: %s", databasePath)
 		}
 	}
 	return databasePath, err
+}
+
+// OverwriteFile Checks whether a file already exists.
+// If this file already exists, you have the option to overwrite it,
+// have the new file renamed automatically, or cancel the program.
+//
+// Parameter:
+//   - path: Which file should be checked
+//
+// Returns:
+//   - string: the new file name with path
+//   - error: if an external error occurs
+func OverwriteFile(path string) (string, error) {
+	absPath, err := ResolvePath(path)
+	if err != nil {
+		return "", err
+	}
+	absPath = absPath + ListSuffix
+	if FileExists(absPath) {
+		var input string
+
+		fmt.Println("The output file already exists. (o)verwrite, (r)ename, or (c)ancel? (o/r/c):")
+		_, err := fmt.Scanln(&input)
+		if err != nil {
+			return "", err
+		}
+		rename := func(p string) string {
+			base := strings.TrimSuffix(p, ListSuffix)
+			var i int32
+			for {
+				newPath := fmt.Sprintf("%s_%d%s", base, i, ListSuffix)
+				if !FileExists(newPath) {
+					return newPath
+				}
+				i++
+			}
+		}
+
+		switch input {
+		case "o": // Overwrite
+			return path, nil
+		case "O": // Overwrite
+			return path, nil
+		case "r": // Rename
+			newPath := rename(path)
+			fmt.Printf("New filename is: %s \n", filepath.Base(newPath))
+			return rename(path), nil
+		case "R": // Rename
+			newPath := rename(path)
+			fmt.Printf("New filename is: %s \n", filepath.Base(newPath))
+			return rename(path), nil
+		case "c": // Cancel
+			os.Exit(0)
+		case "C": // Cancel
+			os.Exit(0)
+		default:
+			return "", fmt.Errorf("invalid input %s", input)
+		}
+	}
+	return path, nil
 }

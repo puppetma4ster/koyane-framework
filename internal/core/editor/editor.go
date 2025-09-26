@@ -76,11 +76,11 @@ func (wordlist *EditWordlist) ConcurrentSortWordlist() {
 			channelNewFiles <- result
 		}(unSortPath)
 	}
+
 	go func() { // wait till every GoRoutine is finished
 		threadPool.Wait()
 		close(channelNewFiles)
 	}()
-
 	var newFiles []*os.File
 	for path := range channelNewFiles {
 		newFiles = append(newFiles, path)
@@ -95,7 +95,7 @@ func (wordlist *EditWordlist) ConcurrentSortWordlist() {
 //   - inputPath: path to the list to be edited
 //   - outputPath: where the edited list should be saved
 //
-// - delOriginal: Deletes the list that was to be edited so that only the new edited one remains.
+// - delOriginal: Deletes the list that was to be edited so that only the new edited one remains.inputPath.Close()
 //
 // Returns:
 //   - EditWordlist: struct with wordlist information
@@ -108,9 +108,6 @@ func sortWordlist(inputPath *os.File) (*os.File, error) {
 	}
 	err = utils.ExternalSort(inputPath, newTempPath)
 	if err != nil {
-		return nil, err
-	}
-	if err := inputPath.Close(); err != nil {
 		return nil, err
 	}
 	err = inputPath.Close() // close and delete old path
@@ -453,11 +450,19 @@ outer:
 }
 
 func (wordlist *EditWordlist) FlushFinishedWordlist() error {
-	err := utils.MergeWordlists(wordlist.tempFiles, wordlist.outputPath)
-	if err != nil {
-		return err
+	if wordlist.isSorted {
+		err := MergeSortedFiles(wordlist.tempFiles, wordlist.outputPath)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := utils.MergeWordlists(wordlist.tempFiles, wordlist.outputPath)
+		if err != nil {
+			return err
+		}
 	}
-	err = utils.RemoveSplitWordlist(wordlist.tempFiles)
+
+	err := utils.RemoveSplitWordlist(wordlist.tempFiles)
 	if err != nil {
 		return err
 	}

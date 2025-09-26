@@ -22,6 +22,14 @@ var generateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		outputPath := args[0]
 
+		outputPath, err := utils.OverwriteFile(outputPath)
+		if err != nil {
+			output.PrintError("errors", "error", err)
+			os.Exit(1)
+		}
+		stop := make(chan struct{})
+		go output.Spinner("Analyze File", stop)
+
 		// when generate is called
 		if minLength == 0 {
 			entities, bytes, err := generator.CalculateMaskStorage(mask)
@@ -62,6 +70,7 @@ var generateCmd = &cobra.Command{
 			output.PrintError("errors", "error", err)
 			os.Exit(1)
 		}
+		close(stop)
 		output.PrintSuccess("successGenerator", "wordlistCreated", oPath+utils.ListSuffix)
 	},
 }
