@@ -1,3 +1,6 @@
+SHELL := /bin/bash
+export PATH := /usr/local/go/bin:$(PATH)
+
 # Name of the compiled binary
 BINARY = koyane-framework
 

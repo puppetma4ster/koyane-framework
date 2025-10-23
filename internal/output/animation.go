@@ -18,6 +18,7 @@ func Spinner(message string, stop <-chan struct{}) {
 		select {
 		case <-stop: // Stop signal received
 			fmt.Print("\r\033[K") // Clear line and stop spinner
+			fmt.Println()
 			return
 		default:
 			// Print the spinner message:

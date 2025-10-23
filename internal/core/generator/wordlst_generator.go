@@ -48,7 +48,10 @@ func ConcurrentGenerateMaskWordlist(maskArg, outputPath string, minLen ...int) e
 	}
 
 	if len(files) != len(masks) { // if there are not the same number of sub masks and temp files
-		defer utils.CloseAllFiles(files)
+		err := utils.RemoveSplitWordlist(files)
+		if err != nil {
+			return err
+		}
 		fmt.Errorf("a file was not prepared for each submask")
 	}
 

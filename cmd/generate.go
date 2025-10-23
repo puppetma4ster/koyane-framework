@@ -28,7 +28,7 @@ var generateCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		stop := make(chan struct{})
-		go output.Spinner("Analyze File", stop)
+		go output.Spinner("Generate File", stop)
 
 		// when generate is called
 		if minLength == 0 {

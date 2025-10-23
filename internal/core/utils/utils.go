@@ -188,7 +188,12 @@ func TempPath(path string) (string, error) {
 }
 
 // CreateTempDir
-// creates a directory for temporary files
+// creates a directory for temporary files /tmp/koyane_framework_tmp
+//
+// Returns:
+//
+//	error: if folder could not be created
+//
 // /*
 func CreateTempDir() error {
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
@@ -204,9 +209,18 @@ func CreateTempDir() error {
 	return nil
 }
 
+// HumanReadableBytes converts bytes into a more readable format
+//
+// Parameters:
+//
+//	bytes: a byte number to be converted
+//
+// Returns:
+//
+//	string: new readable format
 func HumanReadableBytes(bytes uint64) string {
 	const unit = 1024
-	unitsArr := [6]string{"B", "KB", "MB", "GB", "TB", "PB"}
+	unitsArr := [6]string{"B", "KB", "MB", "GB", "TB", "PB"} // units
 
 	f := float64(bytes)
 	for i, u := range unitsArr {
@@ -217,7 +231,7 @@ func HumanReadableBytes(bytes uint64) string {
 		f /= float64(unit)
 	}
 
-	return fmt.Sprintf("%.2f PB", f)
+	return fmt.Sprintf("%.2f PB", f) // rounded to 2 decimal digits after point
 }
 
 // Deprecated: GenerateRandomTempPath
@@ -240,6 +254,7 @@ func GenerateRandomTempPath() (string, error) {
 	return "", fmt.Errorf("couldn't create a temporary file")
 }
 
+// GenerateNewTempFile creates a temporary file in the tmp directory
 func GenerateNewTempFile(name string) (*os.File, error) {
 	f, err := os.CreateTemp(tempDir, name+TempSuffix)
 	if err != nil {
@@ -248,6 +263,15 @@ func GenerateNewTempFile(name string) (*os.File, error) {
 	return f, nil
 }
 
+// splitRange splits the range prompt input
+//
+// Parameters:
+//   - arg: range argument (e.g 3:6)
+//
+// Returns
+//   - string: min rage value
+//   - string: max rage value
+//   - error: if arg is empty, false format
 func splitRange(arg string) (string, string, error) {
 	if arg == "" {
 		return "", "", fmt.Errorf("no arguments specified")
@@ -374,6 +398,14 @@ type Config struct {
 	} `yaml:"analyzer"`
 }
 
+// LoadConfig loads a configuration yaml
+//
+// Parameters:
+//   - path: path to config file
+//
+// Returns
+//   - *Config: returns a struct mapping of the yaml
+//   - error:
 func LoadConfig(path string) (*Config, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -396,6 +428,14 @@ type Settings struct {
 	}
 }
 
+// LoadSettings loads a settings yaml
+//
+// Parameters:
+//   - path: path to settings file
+//
+// Returns
+//   - *Config: returns a struct mapping of the yaml file
+//   - error:
 func LoadSettings(path string) (*Settings, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -411,6 +451,15 @@ func LoadSettings(path string) (*Settings, error) {
 	return &set, nil
 }
 
+// SplitWordlist Split a word list into several parts.
+// Each part file has a fixed number of lines specified in the configuration file.
+//
+// Parameters:
+//   - inputPath: wordlist to be split
+//
+// Returns
+//   - []*os.File: an array with open files
+//   - error: if an error occurs during word list division
 func SplitWordlist(inputPath string) ([]*os.File, error) {
 	// Load config to determine how many lines each chunk file should contain
 	cfgPath, err := GetConfigPath()
@@ -514,6 +563,13 @@ func SplitWordlist(inputPath string) ([]*os.File, error) {
 	return retFiles, nil
 }
 
+// RemoveSplitWordlist closes each file in an array and then deletes it
+// Parameters:
+//   - files: the array with the files that are to be deleted
+//
+// Returns
+//   - []*os.File: an array with open files
+//   - error: if an error occurs during word list removing
 func RemoveSplitWordlist(files []*os.File) error {
 	for _, file := range files {
 		err := file.Close() // Close all files

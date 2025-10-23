@@ -17,7 +17,7 @@ The project is named after *Ame-no-Koyane*, a kami (deity) in Japanese mythology
 
 ---
 ## Installation
-## Makefile (recommended) koyane-framework 0.7.0-beta
+### Makefile (recommended) koyane-framework 0.7.0-beta
 The installation has only been tested on Linux operating systems so far. 
 Due to the program's path handling, it will probably not be able to run on Windows.
 Future versions are also planned to be compatible with Windows.
@@ -56,14 +56,14 @@ make clean
 
 Go to the project directory where the **Makefile** is located and run:
 ```bash
-sudo make uninstalling koyane-framework
+sudo make uninstall koyane-framework
 ```
 ---------------------------------------------
 
 ### From pypi **(outdated)** koyane-framework 0.2.0-alpha
 ##### This version is NOT recommended!
 ##### The pipy version was a very early alpha release.This version is NOT recommended.
-You can install the latest build directly with pip:
+You can install the **deprecated** build directly with pip:
 
 ```bash
 pip install koyaneframework

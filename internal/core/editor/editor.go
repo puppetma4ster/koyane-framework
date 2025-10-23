@@ -400,6 +400,84 @@ func (wordlist *EditWordlist) ConcurrentRemoveLinesWithChars(chars string) {
 	wordlist.tempFiles = newFiles
 }
 
+func (wordlist *EditWordlist) ConcurrentExtractHashCatPotFile() {
+	var threadPool sync.WaitGroup
+	channelNewFiles := make(chan *os.File) // channel to catch new paths
+
+	for _, unFiltered := range wordlist.tempFiles {
+		threadPool.Add(1)
+		go func(f *os.File) {
+			defer threadPool.Done()
+			newFile, err := extractHashCatPotfile(f)
+			if err != nil {
+				panic(err)
+			}
+			channelNewFiles <- newFile
+		}(unFiltered)
+	}
+
+	go func() { // wait till every GoRoutine is finished
+		threadPool.Wait()
+		close(channelNewFiles)
+	}()
+
+	var newFiles []*os.File
+	for file := range channelNewFiles {
+		newFiles = append(newFiles, file)
+	}
+
+	wordlist.tempFiles = newFiles
+}
+
+func extractHashCatPotfile(inputFile *os.File) (*os.File, error) {
+	newFile, err := utils.GenerateNewTempFile("Extract_Potfile*") // create new Wordlist
+	if err != nil {
+		return nil, err
+	}
+
+	extractPlain := func(hashAndVal string) string {
+		const collum rune = ':'
+		var afterCollum bool = false
+		var valPlain = ""
+		for _, char := range hashAndVal {
+			if afterCollum {
+				valPlain = valPlain + string(char)
+			} else {
+				if char == collum {
+					afterCollum = true
+				}
+				continue
+			}
+		}
+		return valPlain
+	}
+
+	writer := bufio.NewWriterSize(newFile, 1024*1024) // 1 MB buffer
+	defer writer.Flush()
+
+	scanner := bufio.NewScanner(inputFile)
+
+	for scanner.Scan() {
+		_, err := writer.WriteString(extractPlain(scanner.Text()) + "\n")
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err = scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	// Close and delete old file
+	if err = inputFile.Close(); err != nil {
+		return nil, err
+	}
+	if err = os.Remove(inputFile.Name()); err != nil {
+		return nil, err
+	}
+
+	return newFile, nil
+}
+
 // removeLinesWithChars deletes all lines containing characters that are also in @param = chars
 //
 // Parameters:
