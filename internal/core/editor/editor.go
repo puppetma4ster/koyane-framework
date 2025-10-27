@@ -123,7 +123,8 @@ func sortWordlist(inputPath *os.File) (*os.File, error) {
 
 func (wordlist *EditWordlist) ConcurrentRemoveWordsWithMask(msk string) error {
 	var threadPool sync.WaitGroup
-	channelNewFiles := make(chan *os.File) // channel to catch new paths
+	channelNewFiles := make(chan *os.File)
+	channelErrors := make(chan error, len(wordlist.tempFiles))
 
 	mask, err := generator.NewMaskInterpreter(msk)
 	if err != nil {
@@ -136,15 +137,24 @@ func (wordlist *EditWordlist) ConcurrentRemoveWordsWithMask(msk string) error {
 			defer threadPool.Done()
 			newFile, err := removeWordsWithMask(m, f)
 			if err != nil {
-				panic(err)
+				channelErrors <- err
+				return
 			}
 			channelNewFiles <- newFile
 		}(mask, unRemoved)
 	}
-	go func() { // wait till every GoRoutine is finished
+
+	// waitin for workers
+	go func() {
 		threadPool.Wait()
 		close(channelNewFiles)
+		close(channelErrors)
 	}()
+
+	// check ob Fehler aufgetreten sind
+	if err, ok := <-channelErrors; ok {
+		return err
+	}
 
 	var newPaths []*os.File
 	for path := range channelNewFiles {
@@ -154,6 +164,7 @@ func (wordlist *EditWordlist) ConcurrentRemoveWordsWithMask(msk string) error {
 	wordlist.tempFiles = newPaths
 	return nil
 }
+
 func removeWordsWithMask(mask *generator.MaskInterpreter, inputFIle *os.File) (*os.File, error) {
 	newFile, err := utils.GenerateNewTempFile("Remove_Mask*") // create new Wordlist
 	if err != nil {
@@ -369,6 +380,10 @@ outer:
 	}
 
 	return newFile, nil
+}
+
+func subtractWordlists(inputFile *os.File, subtractFiles []*os.File) error {
+	return nil
 }
 
 func (wordlist *EditWordlist) ConcurrentRemoveLinesWithChars(chars string) {

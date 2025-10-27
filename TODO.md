@@ -2,7 +2,7 @@
 - Parallelize of mask generation ✓
 - subtract wordlists method for edit module
 - statistics about pw endings like percent with digits usw
-- 
+- Correctly analyze file banners in edit mode to edit files
 
 
 
