@@ -124,41 +124,62 @@ func sortWordlist(inputPath *os.File) (*os.File, error) {
 func (wordlist *EditWordlist) ConcurrentRemoveWordsWithMask(msk string) error {
 	var threadPool sync.WaitGroup
 	channelNewFiles := make(chan *os.File)
-	channelErrors := make(chan error, len(wordlist.tempFiles))
+	channelErrors := make(chan error, len(wordlist.tempFiles)) // buffered channel to avoid blocking
 
 	mask, err := generator.NewMaskInterpreter(msk)
 	if err != nil {
 		return err
 	}
 
+	// Launch a goroutine for each file
 	for _, unRemoved := range wordlist.tempFiles {
 		threadPool.Add(1)
 		go func(m *generator.MaskInterpreter, f *os.File) {
 			defer threadPool.Done()
 			newFile, err := removeWordsWithMask(m, f)
 			if err != nil {
-				channelErrors <- err
+				channelErrors <- err // send error to the error channel
 				return
 			}
-			channelNewFiles <- newFile
+			channelNewFiles <- newFile // send the new file to the result channel
 		}(mask, unRemoved)
 	}
 
-	// waitin for workers
+	// Goroutine to close channels once all workers are done
 	go func() {
 		threadPool.Wait()
 		close(channelNewFiles)
 		close(channelErrors)
 	}()
 
-	// check ob Fehler aufgetreten sind
-	if err, ok := <-channelErrors; ok {
-		return err
+	// Collect results and errors
+	var newPaths []*os.File
+	var firstErr error
+
+	for {
+		select {
+		case path, ok := <-channelNewFiles:
+			if !ok { // channel closed
+				channelNewFiles = nil
+			} else {
+				newPaths = append(newPaths, path)
+			}
+		case err, ok := <-channelErrors:
+			if ok && firstErr == nil {
+				firstErr = err // remember the first error
+			} else {
+				channelErrors = nil
+			}
+		}
+
+		// break loop when both channels are closed
+		if channelNewFiles == nil && channelErrors == nil {
+			break
+		}
 	}
 
-	var newPaths []*os.File
-	for path := range channelNewFiles {
-		newPaths = append(newPaths, path)
+	if firstErr != nil {
+		return firstErr
 	}
 
 	wordlist.tempFiles = newPaths
