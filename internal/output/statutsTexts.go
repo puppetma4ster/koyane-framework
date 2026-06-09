@@ -9,8 +9,10 @@ var StatusMessages = map[string]StatusCategory{
 	"errors": {
 		Prefix: "[-]",
 		Messages: map[string]string{
-			"error": "An unexpected error occurred:\n %s",
-			"invID": "An invalid ID was given: %S",
+			"error":          "An unexpected error occurred:\n %s",
+			"invID":          "An invalid ID was given: %S",
+			"wrongMaxLength": "The `max_length` parameter cannot be 0 or negative!",
+			"wrongMinLength": "The `minlength` parameter cannot be less than 0 or greater than the `maxlength` parameter!",
 		},
 	},
 	"warnings": {

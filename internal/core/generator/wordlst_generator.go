@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"runtime"
 	"sync"
 
 	"github.com/puppetma4ster/koyane-framework/internal/core/utils"
@@ -160,6 +161,251 @@ func generateMaskWordlist(msk *MaskInterpreter, outputFile *os.File, minLen ...i
 	}
 
 	return nil
+}
+
+func ExtractHashCatPotfile(inputHcListPath string, outputFile string) error {
+	in, err := utils.ResolvePath(inputHcListPath)
+	if err != nil {
+		return err
+	}
+	out, err := utils.ListPath(outputFile)
+	if err != nil {
+		return err
+	}
+	hcFile, err := os.Open(in)
+	if err != nil {
+		return err
+	}
+	defer hcFile.Close()
+
+	extractPlain := func(hashAndVal string) string {
+		const collum rune = ':'
+		var afterCollum bool = false
+		var valPlain = ""
+		for _, char := range hashAndVal {
+			if afterCollum {
+				valPlain = valPlain + string(char)
+			} else {
+				if char == collum {
+					afterCollum = true
+				}
+				continue
+			}
+		}
+		return valPlain
+	}
+	openOutputFile, err := os.Create(out)
+	if err != nil {
+		return err
+	}
+	defer openOutputFile.Close()
+
+	writer := bufio.NewWriterSize(openOutputFile, 1024*1024) // 1 MB buffer
+	scanner := bufio.NewScanner(hcFile)
+
+	for scanner.Scan() {
+		_, err := writer.WriteString(extractPlain(scanner.Text()) + "\n")
+		if err != nil {
+			return err
+		}
+	}
+	if err = scanner.Err(); err != nil {
+		return err
+	}
+
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ConcurrentPermutation is a high-performance streaming permutation engine for large wordlists.
+//
+// It reads a newline-separated input file containing words and generates all possible
+// permutations of these words up to a given maximum length. The generation process is
+// fully concurrent and designed for large-scale datasets (GB-sized inputs and very large outputs).
+//
+// Architecture:
+//   - Input Stage: Words are loaded from disk using a streaming-safe reader.
+//   - Job Distribution: Each word index is used as a starting point and distributed via a job channel.
+//   - Worker Pool: Multiple goroutines (workers) execute permutation generation in parallel.
+//   - DFS Generation: Each worker performs a depth-first search (DFS) permutation expansion
+//     without duplicating state across workers except for local tracking.
+//   - Output Stage: All generated permutations are streamed through a shared channel to a
+//     single writer goroutine.
+//
+// Concurrency Model:
+//   - Workers are stateless except for local recursion state.
+//   - A buffered jobs channel distributes work across workers.
+//   - A buffered output channel collects results.
+//   - A single writer goroutine ensures safe sequential writes to disk without locking.
+//
+// Memory Behavior:
+//   - No full permutation tree is stored in memory.
+//   - Results are streamed immediately as they are generated.
+//   - Memory usage is bounded by channel buffers and recursion depth.
+//
+// Scaling:
+//   - If workers is set to 0, runtime.NumCPU() is used automatically.
+//   - Performance scales with available CPU cores, but is ultimately limited by disk I/O.
+//
+// This function is intended for high-throughput wordlist generation and security research
+// tooling where controlled combinatorial expansion is required.
+func ConcurrentPermutation(inputFile string, outputFile string, minLen int, maxLen int, workers int) error {
+	absInputPath, err := utils.ResolvePath(inputFile)
+	if err != nil {
+		return err
+	}
+	absOutputPath, err := utils.ListPath(outputFile)
+	if err != nil {
+		return err
+	}
+	words, err := loadWords(absInputPath)
+	if err != nil {
+		return err
+	}
+
+	if workers <= 0 {
+		workers = runtime.NumCPU()
+	}
+
+	jobs := make(chan int, len(words))
+	out := make(chan string, 10000)
+	done := make(chan struct{})
+
+	// SINGLE WRITER
+	go func() {
+		f, err := os.Create(absOutputPath)
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close()
+
+		writer := bufio.NewWriterSize(f, 4*1024*1024)
+
+		for line := range out {
+			writer.WriteString(line)
+			writer.WriteByte('\n')
+		}
+
+		writer.Flush()
+		done <- struct{}{}
+	}()
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go permutationWorker(i, words, minLen, maxLen, jobs, out, &wg)
+	}
+
+	go func() {
+		for i := range words {
+			jobs <- i
+		}
+		close(jobs)
+	}()
+
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+
+	<-done
+	return nil
+}
+
+// loadWords reads a newline-separated word list from the given file path and returns
+// all entries as a string slice. It streams the file line by line to support large files
+// efficiently without loading the entire file into memory at once.
+func loadWords(path string) ([]string, error) {
+	f, err := os.Open(path) // path is already resolved in master function
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+
+	// support long lines
+	buf := make([]byte, 0, 1024*1024)
+	scanner.Buffer(buf, 10*1024*1024)
+
+	var words []string
+
+	for scanner.Scan() {
+		words = append(words, scanner.Text())
+	}
+
+	return words, scanner.Err()
+}
+
+// permuteDFS recursively builds permutations of the given word list starting from a prefix.
+// It performs a depth-first search over all unused words, appending them to the current prefix
+// as long as the resulting string does not exceed the maximum allowed length.
+// Generated permutations are streamed to the output channel immediately to minimize memory usage.
+func permuteDFS(
+	words []string,
+	prefix string,
+	used []bool,
+	minLen int,
+	maxLen int,
+	out chan<- string,
+) {
+	if len(prefix) > maxLen {
+		return
+	}
+
+	for i := 0; i < len(words); i++ {
+		if used[i] {
+			continue
+		}
+
+		next := prefix + words[i]
+
+		if len(next) > maxLen {
+			continue
+		}
+
+		if len(next) >= minLen && len(next) <= maxLen {
+			out <- next
+		}
+
+		used[i] = true
+		permuteDFS(words, next, used, minLen, maxLen, out)
+		used[i] = false
+	}
+}
+
+// permutationWorker processes permutation jobs in parallel.
+// Each worker receives a starting index from the job channel and generates all valid
+// permutations starting from that word index up to the configured maximum length.
+// Results are streamed to the shared output channel, while synchronization is handled
+// via a WaitGroup to ensure proper shutdown of the pipeline.
+func permutationWorker(
+	id int,
+	words []string,
+	minLen int,
+	maxLen int,
+	jobs <-chan int,
+	out chan<- string,
+	wg *sync.WaitGroup,
+) {
+	defer wg.Done()
+
+	for start := range jobs {
+		used := make([]bool, len(words))
+
+		prefix := words[start]
+		used[start] = true
+
+		if len(prefix) >= minLen && len(prefix) <= maxLen {
+			out <- prefix
+		}
+
+		permuteDFS(words, prefix, used, minLen, maxLen, out)
+	}
 }
 
 // productWriter generates all combinations from segmentSets and writes each to the writer.

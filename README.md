@@ -29,7 +29,7 @@ Future versions are also planned to be compatible with Windows.
 Debian, Ubuntu:
 ```bash
 sudo apt update
-sudo apt install build-essential
+sudo apt install build-essential golang-go
 ```
 - Other used go libs are automatically downloaded from the source code during compilation.
 

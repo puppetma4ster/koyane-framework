@@ -15,7 +15,6 @@ var (
 	removeRangeArg    string
 	removeCharArg     string
 	europeanArg       bool
-	extractHcPotfiles bool
 	deleteOriginalArg bool
 )
 var editCmd = &cobra.Command{
@@ -60,10 +59,6 @@ var editCmd = &cobra.Command{
 		if europeanArg {
 			wordlist.ConcurrentFilterEuropeanLines()
 		}
-		if extractHcPotfiles {
-			wordlist.ConcurrentExtractHashCatPotFile()
-		}
-
 		if cmd.Flags().Changed("remove-chars") {
 			wordlist.ConcurrentRemoveLinesWithChars(removeCharArg)
 		}
@@ -86,7 +81,6 @@ func init() {
 	editCmd.Flags().StringVarP(&removeRangeArg, "remove-range", "r", "", output.GenerateEditHelpTexts["removeRange"])
 	editCmd.Flags().StringVarP(&removeCharArg, "remove-chars", "c", "", output.GenerateEditHelpTexts["removeChars"])
 	editCmd.Flags().BoolVar(&europeanArg, "european", false, output.GenerateEditHelpTexts["european"])
-	editCmd.Flags().BoolVar(&extractHcPotfiles, "extract-hc-potfile", false, output.GenerateEditHelpTexts["extract-hc-potfile"])
 
 	editCmd.Flags().BoolVarP(&deleteOriginalArg, "delete", "d", false, output.GenerateEditHelpTexts["delete"])
 

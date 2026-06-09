@@ -29,7 +29,7 @@ SAVE_PATH = ~/.koyane_framework_saves
 # -------------------------
 build:
 	@echo "Start to compile source code..."
-	go build -o "$(BINARY)"
+	go build -buildvcs=false -o "$(BINARY)"
 	@echo "Compilation done!"
 
 # -------------------------
