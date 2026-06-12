@@ -1,4 +1,4 @@
-package cmd
+package app
 
 import (
 	"os"
@@ -15,16 +15,20 @@ var (
 	extractHcPotfiles string
 	permutationFile   string
 	maxLength         int
+	outputPath        string
+	stdout            bool
 )
 
 var generateCmd = &cobra.Command{
 	Use:   output.GenerateMessages["use"],
 	Short: output.GenerateMessages["short"],
 	Long:  output.GenerateMessages["long"],
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		outputPath := args[0]
-
+		if !stdout && outputPath == "" {
+			output.PrintError("errors", "noOutputPath", "")
+			os.Exit(1)
+		}
 		outputPath, err := utils.OverwriteFile(outputPath) // checks if output file is existing
 		if err != nil {
 			output.PrintError("errors", "error", err)
@@ -32,7 +36,9 @@ var generateCmd = &cobra.Command{
 		}
 
 		stop := make(chan struct{}) // spinner animation
-		go output.Spinner("Generate File", stop)
+		if !stdout {
+			go output.Spinner("Generate File", stop)
+		}
 
 		if extractHcPotfiles != "" { // hashcat password extraction is chosen
 			err := generator.ExtractHashCatPotfile(extractHcPotfiles, outputPath)
@@ -90,18 +96,29 @@ var generateCmd = &cobra.Command{
 				os.Exit(1)
 			}
 		}
-		oPath, err := utils.ResolvePath(outputPath)
-		if err != nil {
-			output.PrintError("errors", "error", err)
-			os.Exit(1)
+		if !stdout {
+			oPath, err := utils.ResolvePath(outputPath)
+			if err != nil {
+				output.PrintError("errors", "error", err)
+				os.Exit(1)
+			}
+			close(stop) // stopping spinner animation
+			output.PrintSuccess("successGenerator", "wordlistCreated", oPath+utils.ListSuffix)
 		}
-		close(stop) // stopping spinner animation
-		output.PrintSuccess("successGenerator", "wordlistCreated", oPath+utils.ListSuffix)
 	},
 }
 
+// Execute adds all child commands to the root command and sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
+func Execute() {
+	err := generateCmd.Execute()
+	if err != nil {
+		os.Exit(1)
+	}
+}
+
 func init() {
-	rootCmd.AddCommand(generateCmd)
+	generateCmd.AddCommand(generateCmd)
 
 	generateCmd.Flags().StringVarP(&mask, "mask", "M", "", output.GenerateMessages["mask"])
 
@@ -109,5 +126,7 @@ func init() {
 	generateCmd.Flags().StringVarP(&permutationFile, "permutation", "p", "", output.GenerateMessages["permutation"])
 	generateCmd.Flags().IntVarP(&maxLength, "max", "m", 0, output.GenerateMessages["maxLength"])
 	generateCmd.Flags().StringVar(&extractHcPotfiles, "extract-hc-potfile", "", output.GenerateEditHelpTexts["extract-hc-potfile"])
+	generateCmd.Flags().StringVarP(&outputPath, "output", "o", "", output.GenerateEditHelpTexts["output"])
+	generateCmd.Flags().BoolVar(&stdout, "stdout", false, output.GenerateEditHelpTexts["stdout"])
 
 }

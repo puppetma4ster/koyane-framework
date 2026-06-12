@@ -1,4 +1,4 @@
-package cmd
+package app
 
 import (
 	"os"
@@ -73,8 +73,16 @@ var editCmd = &cobra.Command{
 	},
 }
 
+// Execute adds all child commands to the root command and sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
+func Execute() {
+	err := editCmd.Execute()
+	if err != nil {
+		os.Exit(1)
+	}
+}
 func init() {
-	rootCmd.AddCommand(editCmd)
+	editCmd.AddCommand(editCmd)
 
 	editCmd.Flags().BoolVarP(&sortArg, "sort", "s", false, output.GenerateEditHelpTexts["sort"])
 	editCmd.Flags().StringVarP(&removeMaskArg, "remove-mask", "m", "", output.GenerateEditHelpTexts["removeMask"])

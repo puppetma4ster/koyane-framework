@@ -1,4 +1,4 @@
-package cmd
+package app
 
 import (
 	"os"
@@ -9,11 +9,12 @@ import (
 )
 
 var (
-	allArg      bool
-	generalArg  bool
-	contentArg  bool
-	statsArg    bool
-	saveFileArg string
+	allArg         bool
+	generalArg     bool
+	contentArg     bool
+	statsArg       bool
+	saveFileArg    string
+	withDuplicates bool
 )
 
 var analyzeCmd = &cobra.Command{
@@ -51,7 +52,7 @@ var analyzeCmd = &cobra.Command{
 			printer := output.NewAnalyzePrinter(general, content)
 			printer.PrintAllGeneralInfo()
 			printer.PrintAllContentInfo()
-			printer.PrintAllStatsInfo()
+			printer.PrintAllStatsInfo(withDuplicates)
 
 			err = analyzer.SaveToYamlAll(general, content) // saveing the values from the wordlist
 			if err != nil {
@@ -73,7 +74,7 @@ var analyzeCmd = &cobra.Command{
 			printer := output.NewAnalyzePrinter(general, content)
 
 			printer.PrintAllContentInfo()
-			printer.PrintAllStatsInfo()
+			printer.PrintAllStatsInfo(withDuplicates)
 
 			printer.FlushContent()
 			printer.FlushStats()
@@ -116,7 +117,7 @@ var analyzeCmd = &cobra.Command{
 					os.Exit(1)
 				}
 				printer := output.NewAnalyzePrinter(general, content)
-				printer.PrintAllStatsInfo()
+				printer.PrintAllStatsInfo(withDuplicates)
 				printer.FlushStats()
 			}
 		}
@@ -124,13 +125,23 @@ var analyzeCmd = &cobra.Command{
 	},
 }
 
+// Execute adds all child commands to the root command and sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
+func Execute() {
+	err := analyzeCmd.Execute()
+	if err != nil {
+		os.Exit(1)
+	}
+}
+
 func init() {
-	rootCmd.AddCommand(analyzeCmd)
+	analyzeCmd.AddCommand(analyzeCmd)
 
 	analyzeCmd.Flags().BoolVarP(&allArg, "all", "a", false, output.AnalyzeHelpTexts["all"])
 	analyzeCmd.Flags().BoolVarP(&generalArg, "general", "g", false, output.AnalyzeHelpTexts["generate"])
 	analyzeCmd.Flags().BoolVarP(&contentArg, "content", "c", false, output.AnalyzeHelpTexts["content"])
 	analyzeCmd.Flags().BoolVarP(&statsArg, "stats", "s", false, output.AnalyzeHelpTexts["stats"])
+	analyzeCmd.Flags().BoolVarP(&withDuplicates, "duplicates", "d", false, output.AnalyzeHelpTexts["duplicates"])
 	analyzeCmd.Flags().StringVarP(&saveFileArg, "save-file", "O", "", output.AnalyzeHelpTexts["saveFile"])
 
 }

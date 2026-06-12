@@ -1,7 +1,7 @@
 /*
 Copyright © 2025 puppetm4ster
 */
-package cmd
+package app
 
 import (
 	"fmt"
@@ -15,6 +15,7 @@ import (
 
 var (
 	versionArg bool
+	quietStart bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -34,15 +35,19 @@ var rootCmd = &cobra.Command{
 		}
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) { // is always executed regardless of command / flag
-		figure.NewFigure("KOYANE-FRAMEWORK", "doom", true).Print()
-		fmt.Println("\n\n\n")
-		output.PrintStatus("statusRoot", "generateTemp") //Temp path management
+		if !quietStart {
+			figure.NewFigure("KOYANE-FRAMEWORK", "doom", true).Print()
+			fmt.Println("\n\n\n")
+		}
+		// output.PrintStatus("statusRoot", "generateTemp") //Temp path management
 		err := utils.CreateTempDir()
 		if err != nil { // creates temp folder to /tmp/koyane_framework_tmp
 			output.PrintError("errors", "error", err)
 			os.Exit(1)
 		}
-		fmt.Println("\n\n")
+		if !quietStart {
+			fmt.Println("\n\n")
+		}
 
 	},
 }
@@ -66,5 +71,6 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().BoolVarP(&quietStart, "quiet", "q", false, "Help message for quit")
 	rootCmd.Flags().BoolVarP(&versionArg, "version", "v", false, output.GenerateRootHelpTexts["version"])
 }
