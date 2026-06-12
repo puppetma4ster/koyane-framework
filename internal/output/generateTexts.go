@@ -1,11 +1,12 @@
 package output
 
 var GenerateMessages = map[string]string{
-	"use":   "generate [flags] outputPath",
+	"use":   "kyfgen",
 	"short": "generating wordlists using different methods",
 	"long":  "Generate new word lists for hash, directory, and web fuzzing analyses.",
 
-	"minLength": "Specifies the minimum word length.",
+	"minLength": "Specifies the minimum char length for permutation and mask generation.",
+	"maxLength": "Specifies the maximum char length length for permutation.",
 	"compress":  "compresses wordlist into a .tar.xz archive after generation",
 	"mask": `Generate wordlist from a pattern mask.
 A mask consists of segments starting with '?' followed by letters that define the character type.
@@ -23,10 +24,13 @@ Available wildcards:
   f = common special characters
   p = dot special characters
   b = bracket special characters`,
+	"extract-hc-potfile": "extracts the passwords from a Hashcat potfile",
+	"output":             "output path for the saved word lists",
+	"permutation":        "enter a path to a word list that is to be combined in all possible permutations. The strings must be separated by line breaks.",
 }
 
 var GenerateEditHelpTexts = map[string]string{
-	"use":   "edit [flags] inputPath outputPath",
+	"use":   "kyfedit [OPTIONS] [inputlist] [outputlist]",
 	"short": "A toolkit for editing word lists",
 	"long": "Edit an existing password list or configuration file. " +
 		"This command allows you to update, remove, or add entries interactively or via command-line options.",
@@ -54,7 +58,7 @@ If PATTERN is specified (as a regular expression), only the words that match thi
 }
 
 var AnalyzeHelpTexts = map[string]string{
-	"use":      "analyze [flags] inputPath",
+	"use":      "kyfinfo",
 	"short":    "Analyze wordlists",
 	"long":     "Analyzes an existing word list and lists information such as character statistics about the list",
 	"all":      "Prints all gathered word list information",
@@ -97,14 +101,14 @@ var ShowHelpTexts = map[string]string{
 }
 
 var GetHelpTexts = map[string]string{
-	"use":   "get [flags] wordlistID",
+	"use":   "kyfdb",
 	"short": "Download Wordlists",
 	"long":  "Download wordlists from the database using the list ID.",
 	"path":  "A custom download path if the path from the configuration YAML should not be used. To make a selection, the database ID must be entered at the end WITHOUT a flag.",
 }
 
 var GenerateRootHelpTexts = map[string]string{
-	"use":     "koyane-framework",
+	"use":     "kyfdb",
 	"short":   "Framework for wordlists",
 	"long":    "Koyane-Framework :: wordlist forge & analysis toolkit made by Puppetm4ster",
 	"toggle":  "",

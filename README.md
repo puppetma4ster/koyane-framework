@@ -43,7 +43,7 @@ cd koyane-framework-0.7.0-beta
 #### Build & Installation
 you can use the **auto_install.sh** for installing
 ```bash
-sudo chmod +x auto_install.sh
+chmod +x auto_install.sh
 sudo ./auto_install.sh
 ```
 or install manually with make
@@ -84,25 +84,27 @@ password hash analysis, directory discovery, web fuzzing, and much more.
 The following features are listed per module:
 
 
-### 1. Generation
+### 1. Generation (kyfgen)
 + support for mask-based generation with multiple wildcards using ?d (digits) and
   fixed character segments using ! (e.g. !A for 'A', !abc123 for custom sets).
++ extraction passwords from hashcat potfiles
++ support for string permutation
 
-### 2. Editing
+### 2. Editing  (kyfedit)
 + wordlist sorting
 + remove words by length
 + remove words who match a mask
 + remove words containing given characters
 + filter all words that are not in european chars
 
-### 3. Analyzing
+### 3. Analyzing (kyfinfo)
 + analyze basic word list info
 + line count
 + word length statistics
 + complexity metrics
 + char statistics and frequency
 
-### 4. Finding outer word lists
+### 4. Finding outer word lists (kyfdb)
 + search and filter stats from outer word lists
 + download them from terminal
 
@@ -134,17 +136,17 @@ Koyane aims to become a fast, modular, and scriptable framework for:
 ## Example Usage
 
 ```bash
-koyane-framework [command] flags(s)
 
-koyane-framework generate -M !AS?l?l?l?lL?d?d?! ~/MyList
+kyfgen -M !AS?l?l?l?lL?d?d?! -o ~/MyList.txt
 
-koyane-framework edit -r 8:* --european ~/MyList ~/EditList
+kyfinfo --all ~/MyList.txt
+kyfedit -r 8:* --european ~/MyList.txt ~/EditList.txt
 
-koyane-framework search --biggest-word 8:14 --smallest-word 8:8 --digits-perc 30.0:*
+kyfdb search --biggest-word 8:14 --smallest-word 8:8 --digits-perc 30.0:*
 
-koyane-framework show 22
+kyfdb show 22
 
-koyane-framework get -p ~/OuterList 22
+kyfdb get -p ~/OuterList 22
 
 ```
 ---

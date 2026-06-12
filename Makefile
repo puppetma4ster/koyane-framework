@@ -3,6 +3,10 @@ export PATH := /usr/local/go/bin:$(PATH)
 
 # Name of the compiled binary
 BINARY = koyane-framework
+GENERATE = kyfgen
+EDIT = kyfedit
+ANALYZE = kyfinfo
+SEARCH = kyfdb
 
 # Config, database, and settings files
 CONFIG_FILE = ./config.yaml
@@ -29,7 +33,18 @@ SAVE_PATH = ~/.koyane_framework_saves
 # -------------------------
 build:
 	@echo "Start to compile source code..."
-	go build -buildvcs=false -o "$(BINARY)"
+	@echo "compile kyfgen..."
+	go build -buildvcs=false -o "$(GENERATE)" cmd/kyfgen/main.go
+	@echo "Compiled kyfgen."
+	@echo "Compile kyfedit..."
+	go build -buildvcs=false -o "$(EDIT)" cmd/kyfedit/main.go
+	@echo "Compiled kyfedit."
+	@echo "Compile kyfinfo..."
+	go build -buildvcs=false -o "$(ANALYZE)" cmd/kyfinfo/main.go
+	@echo "Compiled kyfinfo."
+	@echo "Compile kyfdb..."
+	go build -buildvcs=false -o "$(SEARCH)" cmd/kyfdb/main.go
+	@echo "Compiled kyfdb."
 	@echo "Compilation done!"
 
 # -------------------------
@@ -41,7 +56,10 @@ install:
 	@echo "Copying files..."
 	cp $(CONFIG_FILE) $(CONFIG_PATH)
 	cp $(DB_FILE) $(DB_PATH)
-	cp $(BINARY) $(BIN_PATH)
+	cp $(GENERATE) $(BIN_PATH)
+	cp $(EDIT) $(BIN_PATH)
+	cp $(ANALYZE) $(BIN_PATH)
+	cp $(SEARCH) $(BIN_PATH)
 	cp $(SETTINGS_FILE) $(SETTINGS_PATH)
 	@echo "Installation done!"
 
@@ -50,7 +68,7 @@ install:
 # -------------------------
 clean:
 	@echo "Cleaning..."
-	rm -f $(BINARY)
+	rm -f $(GENERATE) $(EDIT) $(ANALYZE) $(SEARCH)
 	@echo "Cleaning done!"
 
 # -------------------------
@@ -59,8 +77,11 @@ clean:
 uninstall:
 	@echo "Uninstalling..."
 	@echo ""
-	@echo "Uninstall binary..."
-	rm -f "$(BIN_PATH)/$(BINARY)"
+	@echo "Uninstall binarys..."
+	rm -f "$(BIN_PATH)/$(GENERATE)"
+	rm -f "$(BIN_PATH)/$(EDIT)"
+	rm -f "$(BIN_PATH)/$(ANALYZE)"
+	rm -f "$(BIN_PATH)/$(SEARCH)"
 	@echo "Done!"
 	@echo "Uninstall configurations..."
 	rm -rf $(CONFIG_PATH)

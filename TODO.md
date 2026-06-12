@@ -9,10 +9,10 @@ TODO:
 - Duplicate words should not be output for space reasons, unless an explicit flag is set.
 - remove duplicates for edit
 
-- dont print dublicates in all
 - Comment on all methods in detail.
 - Create file log module for debugging
 
 IMPLEMENTED
 - Parallelize of mask generation ✓
 - permutation generation ✓
+- dont print dublicates in all ✓

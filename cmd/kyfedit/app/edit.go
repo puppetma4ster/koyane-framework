@@ -82,7 +82,6 @@ func Execute() {
 	}
 }
 func init() {
-	editCmd.AddCommand(editCmd)
 
 	editCmd.Flags().BoolVarP(&sortArg, "sort", "s", false, output.GenerateEditHelpTexts["sort"])
 	editCmd.Flags().StringVarP(&removeMaskArg, "remove-mask", "m", "", output.GenerateEditHelpTexts["removeMask"])

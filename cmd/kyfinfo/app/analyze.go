@@ -135,7 +135,6 @@ func Execute() {
 }
 
 func init() {
-	analyzeCmd.AddCommand(analyzeCmd)
 
 	analyzeCmd.Flags().BoolVarP(&allArg, "all", "a", false, output.AnalyzeHelpTexts["all"])
 	analyzeCmd.Flags().BoolVarP(&generalArg, "general", "g", false, output.AnalyzeHelpTexts["generate"])

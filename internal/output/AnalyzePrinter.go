@@ -63,9 +63,11 @@ func (wordlist *AnalyzePrinter) PrintAllContentInfo() {
 	wordlist.PrintAvEntropy()
 	wordlist.PrintHasDuplicates()
 }
-func (wordlist *AnalyzePrinter) PrintAllStatsInfo() {
+func (wordlist *AnalyzePrinter) PrintAllStatsInfo(withDuplicates bool) {
 	wordlist.PrintWordStats()
-	wordlist.PrintDuplicateWords()
+	if withDuplicates {
+		wordlist.PrintDuplicateWords()
+	}
 	wordlist.PrintCharStatistics()
 }
 

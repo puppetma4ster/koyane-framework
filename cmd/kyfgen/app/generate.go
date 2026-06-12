@@ -118,7 +118,6 @@ func Execute() {
 }
 
 func init() {
-	generateCmd.AddCommand(generateCmd)
 
 	generateCmd.Flags().StringVarP(&mask, "mask", "M", "", output.GenerateMessages["mask"])
 

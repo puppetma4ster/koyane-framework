@@ -138,7 +138,7 @@ func generateMaskWordlist(msk *MaskInterpreter, outputFile *os.File, minLen ...i
 		}
 	}
 
-	writer := bufio.NewWriterSize(outputFile, 1024*1024) // 1 MB buffer
+	writer := bufio.NewWriterSize(outputFile, 16*1024*1024) // 16 MiB buffer
 	defer writer.Flush()
 
 	for _, length := range lengths {
@@ -163,56 +163,60 @@ func generateMaskWordlist(msk *MaskInterpreter, outputFile *os.File, minLen ...i
 	return nil
 }
 
+// ExtractHashCatPotfile
+// Is a method for extracting passwords from hashcat potfiles.
+// It extracts the password by locating the last “:” character and extracting everything to the right of it.
 func ExtractHashCatPotfile(inputHcListPath string, outputFile string) error {
-	in, err := utils.ResolvePath(inputHcListPath)
+	in, err := utils.ResolvePath(inputHcListPath) // resolving relative path to an absolute path
 	if err != nil {
 		return err
 	}
-	out, err := utils.ListPath(outputFile)
-	if err != nil {
-		return err
+
+	var absOutputPath string = outputFile
+	if outputFile != "" { // Checking for stdout or writing to a file
+		absOutputPath, err = utils.ListPath(outputFile)
+		if err != nil {
+			return err
+		}
 	}
-	hcFile, err := os.Open(in)
+
+	hcFile, err := os.Open(in) // open the hashcat potfile
 	if err != nil {
 		return err
 	}
 	defer hcFile.Close()
 
-	extractPlain := func(hashAndVal string) string {
-		const collum rune = ':'
-		var afterCollum bool = false
-		var valPlain = ""
-		for _, char := range hashAndVal {
-			if afterCollum {
-				valPlain = valPlain + string(char)
-			} else {
-				if char == collum {
-					afterCollum = true
-				}
-				continue
-			}
+	extractPlain := func(hashAndVal string) string { // extracting passwords
+		idx := strings.LastIndex(hashAndVal, ":")
+		if idx == -1 {
+			return ""
 		}
-		return valPlain
+		return hashAndVal[idx+1:]
 	}
-	openOutputFile, err := os.Create(out)
-	if err != nil {
-		return err
+	// Create a buffer for stdout or write to a file
+	var writer *bufio.Writer
+	if absOutputPath == "" { // if no path is given stdout results
+		writer = bufio.NewWriterSize(os.Stdout, 1024*1024) // 1 MB buffer
+	} else { // write file
+		openOutputFile, err := os.Create(absOutputPath)
+		if err != nil {
+			return err
+		}
+		writer = bufio.NewWriterSize(openOutputFile, 1024*1024) // 1 MB buffer
+		defer openOutputFile.Close()
 	}
-	defer openOutputFile.Close()
+	scanner := bufio.NewScanner(hcFile) // reading input file
 
-	writer := bufio.NewWriterSize(openOutputFile, 1024*1024) // 1 MB buffer
-	scanner := bufio.NewScanner(hcFile)
-
-	for scanner.Scan() {
+	for scanner.Scan() { // write passwords
 		_, err := writer.WriteString(extractPlain(scanner.Text()) + "\n")
 		if err != nil {
 			return err
 		}
 	}
+
 	if err = scanner.Err(); err != nil {
 		return err
 	}
-
 	if err := writer.Flush(); err != nil {
 		return err
 	}
@@ -257,9 +261,12 @@ func ConcurrentPermutation(inputFile string, outputFile string, minLen int, maxL
 	if err != nil {
 		return err
 	}
-	absOutputPath, err := utils.ListPath(outputFile)
-	if err != nil {
-		return err
+	var absOutputPath string = ""
+	if outputFile != "" {
+		absOutputPath, err = utils.ListPath(outputFile)
+		if err != nil {
+			return err
+		}
 	}
 	words, err := loadWords(absInputPath)
 	if err != nil {
@@ -271,18 +278,23 @@ func ConcurrentPermutation(inputFile string, outputFile string, minLen int, maxL
 	}
 
 	jobs := make(chan int, len(words))
-	out := make(chan string, 10000)
+	out := make(chan string, 100000)
 	done := make(chan struct{})
 
-	// SINGLE WRITER
 	go func() {
-		f, err := os.Create(absOutputPath)
-		if err != nil {
-			panic(err)
-		}
-		defer f.Close()
+		var writer *bufio.Writer
+		var file *os.File
 
-		writer := bufio.NewWriterSize(f, 4*1024*1024)
+		if outputFile == "" {
+			writer = bufio.NewWriterSize(os.Stdout, 16*1024*1024)
+		} else {
+			f, err := os.Create(absOutputPath)
+			if err != nil {
+				panic(err)
+			}
+			file = f
+			writer = bufio.NewWriterSize(f, 16*1024*1024)
+		}
 
 		for line := range out {
 			writer.WriteString(line)
@@ -290,6 +302,11 @@ func ConcurrentPermutation(inputFile string, outputFile string, minLen int, maxL
 		}
 
 		writer.Flush()
+
+		if file != nil {
+			file.Close()
+		}
+
 		done <- struct{}{}
 	}()
 
@@ -362,7 +379,10 @@ func permuteDFS(
 			continue
 		}
 
-		next := prefix + words[i]
+		var sb strings.Builder
+		sb.WriteString(prefix)
+		sb.WriteString(words[i])
+		next := sb.String()
 
 		if len(next) > maxLen {
 			continue

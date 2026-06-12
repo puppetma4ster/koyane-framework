@@ -13,6 +13,7 @@ var StatusMessages = map[string]StatusCategory{
 			"invID":          "An invalid ID was given: %S",
 			"wrongMaxLength": "The `max_length` parameter cannot be 0 or negative!",
 			"wrongMinLength": "The `minlength` parameter cannot be less than 0 or greater than the `maxlength` parameter!",
+			"noOutputPath":   "No output path was specified!",
 		},
 	},
 	"warnings": {
