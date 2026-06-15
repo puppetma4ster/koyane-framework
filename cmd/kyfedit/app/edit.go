@@ -62,7 +62,7 @@ func init() {
 	editCmd.Flags().BoolVar(&stdout, "stdout", false, "sort words")
 	editCmd.Flags().BoolVarP(&sortArg, "sort", "s", false, output.GenerateEditHelpTexts["sort"])
 	editCmd.Flags().StringVarP(&filterMaskArg, "filter-mask", "m", "", output.GenerateEditHelpTexts["removeMask"])
-	editCmd.Flags().StringVarP(&filterRangeArg, "ftilter-range", "r", "", output.GenerateEditHelpTexts["removeRange"])
+	editCmd.Flags().StringVarP(&filterRangeArg, "filter-range", "r", "", output.GenerateEditHelpTexts["removeRange"])
 	editCmd.Flags().StringVarP(&filterRegExArg, "filter-chars", "x", "", output.GenerateEditHelpTexts["removeChars"])
 	editCmd.Flags().BoolVar(&europeanArg, "european", false, output.GenerateEditHelpTexts["european"])
 	editCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, output.GenerateEditHelpTexts["quiet"])

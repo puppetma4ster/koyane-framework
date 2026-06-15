@@ -386,6 +386,7 @@ type Config struct {
 		DatabasePath         string `yaml:"wordlist_db_path"`
 		MultiThreadFileLines uint32 `yaml:"multithread_file_lines"`
 		ChunkLineSize        int    `yaml:"chunk_line_size"`
+		ByteLineLimit        int    `yaml:"byte_line_limit"`
 	} `yaml:"general"`
 	Ui struct {
 		Language            string `yaml:"language"`

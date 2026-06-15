@@ -35,6 +35,7 @@ general:
   # Specifies how many lines each file may have when it is split for multithreading. The number must NOT be negative.
   multithread_file_lines: 1000000  # 1_000_000
   chunk_line_size: 1000000 # 1_000_000
+  line_byte_limit: 20480  # 20_480 bytes = 20kb = max 5120  utf8 4byte characters
 
 
 ui:
