@@ -34,6 +34,7 @@ general:
   wordlist_db_path: ./wordLists.db
   # Specifies how many lines each file may have when it is split for multithreading. The number must NOT be negative.
   multithread_file_lines: 1000000  # 1_000_000
+  chunk_line_size: 1000000 # 1_000_000
 
 
 ui:
@@ -44,6 +45,8 @@ ui:
 editor:
   # Specifies the maximum number of characters a word can have when generating or filtering.
   max_word_length: 700
+  # specifies the encoding if no encoding is given
+  default_encoding: utf-8
 
 analyzer:
   # If true, each analyzed word list is saved in JSON format so

@@ -4,71 +4,43 @@ import (
 	"os"
 
 	"github.com/puppetma4ster/koyane-framework/internal/core/editor"
-	"github.com/puppetma4ster/koyane-framework/internal/core/utils"
 	"github.com/puppetma4ster/koyane-framework/internal/output"
 	"github.com/spf13/cobra"
 )
 
 var (
+	inputFilePath     string
+	outputFilePath    string
 	sortArg           bool
-	removeMaskArg     string
-	removeRangeArg    string
-	removeCharArg     string
+	filterMaskArg     string
+	filterRangeArg    string
+	filterRegExArg    string
 	europeanArg       bool
 	deleteOriginalArg bool
+	stdout            bool
+	quiet             bool
 )
 var editCmd = &cobra.Command{
 	Use:   output.GenerateEditHelpTexts["use"],
 	Short: output.GenerateEditHelpTexts["short"],
 	Long:  output.GenerateEditHelpTexts["long"],
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		inputPath := args[0]
-		outputPath := args[1]
+		// print banner
+		if !quiet && !stdout {
+			output.PrintBanner()
 
-		outputPath, err := utils.OverwriteFile(outputPath)
-		if err != nil {
-			output.PrintError("errors", "error", err)
-			os.Exit(1)
 		}
-
 		stop := make(chan struct{})
-		go output.Spinner("Edit File", stop)
-
-		wordlist, err := editor.NewEditWordlist(inputPath, outputPath, deleteOriginalArg)
-		if err != nil {
-			return
+		if !stdout {
+			go output.Spinner("Edit File", stop)
 		}
-		if sortArg {
-			wordlist.ConcurrentSortWordlist()
-		}
-		if cmd.Flags().Changed("remove-range") {
-			err = wordlist.ConcurrentRemoveWordsByRange(removeRangeArg)
-			if err != nil {
-				output.PrintError("errors", "error", err)
-				os.Exit(1)
-			}
-		}
-		if cmd.Flags().Changed("remove-mask") {
-			err = wordlist.ConcurrentRemoveWordsWithMask(removeMaskArg)
-			if err != nil {
-				output.PrintError("errors", "error", err)
-				os.Exit(1)
-			}
-		}
-		if europeanArg {
-			wordlist.ConcurrentFilterEuropeanLines()
-		}
-		if cmd.Flags().Changed("remove-chars") {
-			wordlist.ConcurrentRemoveLinesWithChars(removeCharArg)
-		}
-
-		err = wordlist.FlushFinishedWordlist()
+		err := editor.EditWordlist(inputFilePath, outputFilePath, filterRangeArg, filterMaskArg, filterRegExArg)
 		if err != nil {
 			output.PrintError("errors", "error", err)
 			os.Exit(1)
-
 		}
+
 		close(stop)
 	},
 }
@@ -83,12 +55,17 @@ func Execute() {
 }
 func init() {
 
-	editCmd.Flags().BoolVarP(&sortArg, "sort", "s", false, output.GenerateEditHelpTexts["sort"])
-	editCmd.Flags().StringVarP(&removeMaskArg, "remove-mask", "m", "", output.GenerateEditHelpTexts["removeMask"])
-	editCmd.Flags().StringVarP(&removeRangeArg, "remove-range", "r", "", output.GenerateEditHelpTexts["removeRange"])
-	editCmd.Flags().StringVarP(&removeCharArg, "remove-chars", "c", "", output.GenerateEditHelpTexts["removeChars"])
-	editCmd.Flags().BoolVar(&europeanArg, "european", false, output.GenerateEditHelpTexts["european"])
+	editCmd.Flags().StringVarP(&inputFilePath, "input", "i", "", "input file path")
 
+	editCmd.Flags().StringVarP(&outputFilePath, "output", "o", "", "output file path")
+
+	editCmd.Flags().BoolVar(&stdout, "stdout", false, "sort words")
+	editCmd.Flags().BoolVarP(&sortArg, "sort", "s", false, output.GenerateEditHelpTexts["sort"])
+	editCmd.Flags().StringVarP(&filterMaskArg, "filter-mask", "m", "", output.GenerateEditHelpTexts["removeMask"])
+	editCmd.Flags().StringVarP(&filterRangeArg, "ftilter-range", "r", "", output.GenerateEditHelpTexts["removeRange"])
+	editCmd.Flags().StringVarP(&filterRegExArg, "filter-chars", "x", "", output.GenerateEditHelpTexts["removeChars"])
+	editCmd.Flags().BoolVar(&europeanArg, "european", false, output.GenerateEditHelpTexts["european"])
+	editCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, output.GenerateEditHelpTexts["quiet"])
 	editCmd.Flags().BoolVarP(&deleteOriginalArg, "delete", "d", false, output.GenerateEditHelpTexts["delete"])
 
 }

@@ -2,8 +2,10 @@ package editor
 
 import (
 	"bufio"
-	"fmt"
+	"io"
 	"os"
+	"regexp"
+	"runtime"
 	"sync"
 	"unicode/utf8"
 
@@ -11,496 +13,425 @@ import (
 	"github.com/puppetma4ster/koyane-framework/internal/core/utils"
 )
 
-type EditWordlist struct {
-	isSorted   bool
-	outputPath string
-	tempFiles  []*os.File
+// Chunk struct for managing individual chunks
+// Index - chunk number to ensure correct sequence
+// Lines - the words in the chunk
+type Chunk struct {
+	Index uint64
+	Lines []string
 }
 
-// NewEditWordlist Creates a new struct for wordlist processing.
-// The method converts each path to an absolute path.
-// The list is then copied to the project's temp path.
-// There, the list is split into several parts to enable parallel processing.
-//
-// Parameters:
-//   - inputPath: path to the list to be edited
-//   - outputPath: where the edited list should be saved
-//
-// - delOriginal: Deletes the list that was to be edited so that only the new edited one remains.
-//
-// Returns:
-//   - EditWordlist: struct with wordlist information
-//   - error: if  path resolve problems, temp path generateing problems, copy problems,
-//     wordlist splitting problems, deleting problems
-func NewEditWordlist(inputPath, outputPath string, delOriginal bool) (*EditWordlist, error) {
-	absoluteInputPath, err := utils.ResolvePath(inputPath)
-	if err != nil {
-		return nil, err
-	}
-	absoluteOutputPath, err := utils.ResolvePath(outputPath) // saves absolute path
-	if err != nil {
-		return nil, err
+// ReadChunks Reads a file and splits it into chunks
+// input - file input stream
+// chunkSize - how many lines does the chunk get
+// out - piping the chunks
+func readChunksWorker(input io.Reader, chunkSize int, out chan<- Chunk) error {
+	scanner := bufio.NewScanner(input)
+
+	chunk := Chunk{
+		Index: 0,
+		Lines: make([]string, 0, chunkSize),
 	}
 
-	tempList, err := utils.SplitWordlist(absoluteInputPath) // splits wordlist and saves to temp dir
-	if err != nil {
-		return nil, err
-	}
-	if delOriginal { // if flag is used for deleting the original file
-		err = os.Remove(absoluteInputPath)
-		if err != nil {
-			return nil, err
+	for scanner.Scan() {
+		chunk.Lines = append(chunk.Lines, scanner.Text())
+
+		if len(chunk.Lines) == chunkSize { // if chunk is full
+
+			out <- chunk // write chunk in channel
+
+			chunk = Chunk{ // generate new empty chunk
+				Index: chunk.Index + 1,
+				Lines: make([]string, 0, chunkSize),
+			}
 		}
 	}
-	return &EditWordlist{ // creating struct
-		isSorted:   false,
-		outputPath: absoluteOutputPath,
-		tempFiles:  tempList,
-	}, nil
-}
-
-// ConcurrentSortWordlist parallelizes the sorting process
-// All temp lists are sorted and the new string is captured in channelNewPaths.
-// channelNewPaths is then passed to the struct as a new array and the isSorted switch is set to true.
-func (wordlist *EditWordlist) ConcurrentSortWordlist() {
-	var threadPool sync.WaitGroup
-	channelNewFiles := make(chan *os.File) // channel to catch new paths
-	for _, unSortPath := range wordlist.tempFiles {
-		threadPool.Add(1)
-		go func(p *os.File) {
-			defer threadPool.Done()
-			result, err := sortWordlist(p)
-			if err != nil {
-				panic(err)
-			}
-			channelNewFiles <- result
-		}(unSortPath)
-	}
-
-	go func() { // wait till every GoRoutine is finished
-		threadPool.Wait()
-		close(channelNewFiles)
-	}()
-	var newFiles []*os.File
-	for path := range channelNewFiles {
-		newFiles = append(newFiles, path)
-	}
-	wordlist.isSorted = true
-	wordlist.tempFiles = newFiles
-}
-
-// SortWordlist sorts a wordlist with an external sort algorithm
-//
-// Parameters:
-//   - inputPath: path to the list to be edited
-//   - outputPath: where the edited list should be saved
-//
-// - delOriginal: Deletes the list that was to be edited so that only the new edited one remains.inputPath.Close()
-//
-// Returns:
-//   - EditWordlist: struct with wordlist information
-//   - error: if  path resolve problems, temp path generateing problems, copy problems,
-//     wordlist splitting problems, deleting problems
-func sortWordlist(inputPath *os.File) (*os.File, error) {
-	newTempPath, err := utils.GenerateNewTempFile("Edit_Sort*")
-	if err != nil {
-		return nil, err
-	}
-	err = utils.ExternalSort(inputPath, newTempPath)
-	if err != nil {
-		return nil, err
-	}
-	err = inputPath.Close() // close and delete old path
-	if err != nil {
-		return nil, err
-	}
-	err = os.Remove(inputPath.Name())
-	if err != nil {
-		return nil, err
-	}
-	return newTempPath, nil
-}
-
-func (wordlist *EditWordlist) ConcurrentRemoveWordsWithMask(msk string) error {
-	var threadPool sync.WaitGroup
-	channelNewFiles := make(chan *os.File)
-	channelErrors := make(chan error, len(wordlist.tempFiles)) // buffered channel to avoid blocking
-
-	mask, err := generator.NewMaskInterpreter(msk)
-	if err != nil {
+	if err := scanner.Err(); err != nil { // checking for errors in scanner.Scan() for loop
 		return err
 	}
 
-	// Launch a goroutine for each file
-	for _, unRemoved := range wordlist.tempFiles {
-		threadPool.Add(1)
-		go func(m *generator.MaskInterpreter, f *os.File) {
-			defer threadPool.Done()
-			newFile, err := removeWordsWithMask(m, f)
-			if err != nil {
-				channelErrors <- err // send error to the error channel
-				return
-			}
-			channelNewFiles <- newFile // send the new file to the result channel
-		}(mask, unRemoved)
+	if len(chunk.Lines) > 0 { // flushing last chunk
+		out <- chunk
 	}
 
-	// Goroutine to close channels once all workers are done
+	close(out) // closing last channel
+	return nil // return nil - no errors where encountered
+}
+
+// startReader creates the first stage of the pipeline.
+// It reads the input stream, splits it into chunks
+// and returns the output channel.
+func startReader(
+	input io.Reader,
+	chunkSize int,
+) <-chan Chunk {
+
+	out := make(chan Chunk)
+
 	go func() {
-		threadPool.Wait()
-		close(channelNewFiles)
-		close(channelErrors)
+
+		err := readChunksWorker(
+			input,
+			chunkSize,
+			out,
+		)
+
+		if err != nil {
+			panic(err)
+		}
+
 	}()
 
-	// Collect results and errors
-	var newPaths []*os.File
-	var firstErr error
-
-	for {
-		select {
-		case path, ok := <-channelNewFiles:
-			if !ok { // channel closed
-				channelNewFiles = nil
-			} else {
-				newPaths = append(newPaths, path)
-			}
-		case err, ok := <-channelErrors:
-			if ok && firstErr == nil {
-				firstErr = err // remember the first error
-			} else {
-				channelErrors = nil
-			}
-		}
-
-		// break loop when both channels are closed
-		if channelNewFiles == nil && channelErrors == nil {
-			break
-		}
-	}
-
-	if firstErr != nil {
-		return firstErr
-	}
-
-	wordlist.tempFiles = newPaths
-	return nil
+	return out
 }
 
-func removeWordsWithMask(mask *generator.MaskInterpreter, inputFIle *os.File) (*os.File, error) {
-	newFile, err := utils.GenerateNewTempFile("Remove_Mask*") // create new Wordlist
-	if err != nil {
-		return nil, err
-	}
+// writeChunks writes each processed chunk to stdout or to a file
+// output - where to write (open file or stdout)
+// in - channel containing the finished chunks
+func writeChunks(output io.Writer, in <-chan Chunk) error {
 
-	writer := bufio.NewWriterSize(newFile, 1024*1024) // 1 MB buffer
-	defer writer.Flush()
+	writer := bufio.NewWriter(output) // Create the Writer
 
-	scanner := bufio.NewScanner(inputFIle)
-	for scanner.Scan() {
-		if generator.MatchesWord(mask, scanner.Text()) {
-			continue
+	for chunk := range in { // loop through all chunks
+
+		for _, line := range chunk.Lines { // loop through all chunk lines
+
+			_, err := writer.WriteString( // Write a line with a line break
+				line + "\n",
+			)
+
+			if err != nil {
+				return err
+			}
 		}
-		_, err = writer.WriteString(scanner.Text() + "\n")
-		if err != nil {
-			return nil, err
-		}
 	}
-	if err = scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	err = inputFIle.Close()
-	if err != nil {
-		return nil, err
-	}
-	err = os.Remove(inputFIle.Name())
-	if err != nil {
-		return nil, err
-	}
-	return newFile, nil
-}
-
-func (wordlist *EditWordlist) ConcurrentRemoveWordsByRange(r string) error {
-	var threadPool sync.WaitGroup
-	channelNewFiles := make(chan *os.File) // channel to catch new paths
-
-	uintRange, err := utils.NewUint64Range(r)
-	if err != nil {
+	if err := writer.Flush(); err != nil { // if errors occurred during the writing process
 		return err
 	}
-	for _, unRemoved := range wordlist.tempFiles {
-		threadPool.Add(1)
-		go func(r *utils.Uint64Range, f *os.File) {
-			defer threadPool.Done()
-			newFile, err := removeWordsByRangeUint(r, f)
-			if err != nil {
-				panic(err)
-			}
-			channelNewFiles <- newFile
-		}(uintRange, unRemoved)
-	}
-	go func() { // wait till every GoRoutine is finished
-		threadPool.Wait()
-		close(channelNewFiles)
-	}()
-
-	var newFiles []*os.File
-	for file := range channelNewFiles {
-		newFiles = append(newFiles, file)
-	}
-
-	wordlist.tempFiles = newFiles
 	return nil
 }
 
-// RemoveWordsByRangeUint removes all words from the current wordlist
-// whose length in runes is outside the given Uint64Range.
-// - If Min is set: words shorter than Min are skipped
-// - If Max is set: words longer than Max are skipped
-// - If both are nil: everything is kept
-func removeWordsByRangeUint(r *utils.Uint64Range, inputFile *os.File) (*os.File, error) {
-	if r == nil {
-		return nil, fmt.Errorf("range must not be nil")
-	}
-	// Min must not be greater than Max
-	if r.Min != nil && r.Max != nil && *r.Min > *r.Max {
-		return nil, fmt.Errorf("the minimum variable must not be greater than the maximum! Min: %d Max: %d", *r.Min, *r.Max)
-	}
+// removeRangeWorker specifies how the range is filtered
+// r - range to filter
+// in -the chunk being filtered
+// out - the finished filtered chunk
+func filterRangeWorker(r *utils.Uint64Range, in <-chan Chunk, out chan<- Chunk) {
+	for chunk := range in { // loop through all the given chunks
 
-	// generate a new temporary file path
-	newTempFile, err := utils.GenerateNewTempFile("Remove_Range*")
-	if err != nil {
-		return nil, err
-	}
-
-	// buffered writer for performance (1 MB buffer)
-	writer := bufio.NewWriterSize(newTempFile, 1024*1024)
-	defer writer.Flush()
-
-	// scanner with increased buffer size (default 64 KB → bumped to 1 MB)
-	scanner := bufio.NewScanner(inputFile)
-	buf := make([]byte, 64*1024)
-	scanner.Buffer(buf, 1024*1024)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		// rune count for proper Unicode length
-		l := uint64(utf8.RuneCountInString(line))
-
-		// enforce minimum length
-		if r.Min != nil && l < *r.Min {
-			continue
-		}
-		// enforce maximum length
-		if r.Max != nil && l > *r.Max {
-			continue
+		filtered := Chunk{ // create a new empty chunk
+			Index: chunk.Index,
+			Lines: make([]string, 0, len(chunk.Lines)),
 		}
 
-		// write line to new file if within range
-		if _, err := writer.WriteString(line + "\n"); err != nil {
-			return nil, err
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
+		for _, line := range chunk.Lines { // loop through the lines of the chunk to be filtered
 
-	// remove and close old file and swap paths
-	err = inputFile.Close()
-	if err != nil {
-		return nil, err
+			l := uint64(utf8.RuneCountInString(line)) // count the characters in the line
+
+			// NOTE: Here, inversion can be easily implemented using if-else statements.
+			if r.Min != nil && l < *r.Min { // the line character is less than the minimum range
+				continue // skip
+			}
+
+			if r.Max != nil && l > *r.Max { // if the line length exceeds the maximum range
+				continue // skip
+			}
+
+			filtered.Lines = append( // Write lines that match the range in the new chunk
+				filtered.Lines,
+				line,
+			)
+		}
+
+		out <- filtered // Write the filtered chunk to the output channel
 	}
-	if err := os.Remove(inputFile.Name()); err != nil {
-		return nil, err
-	}
-	return newTempFile, nil
 }
 
-func (wordlist *EditWordlist) ConcurrentFilterEuropeanLines() {
-	var threadPool sync.WaitGroup
-	channelNewFiles := make(chan *os.File) // channel to catch new paths
+// startFilterRange manages the go routines to be executed for the range filter
+// r - the processed range arg with min and max
+// workerCount - how many threads (workers) should be created
+// in - input stream of the chunks to be filtered
+func startFilterRange(
+	r *utils.Uint64Range,
+	workerCount int,
+	in <-chan Chunk,
+) <-chan Chunk {
 
-	for _, unFiltered := range wordlist.tempFiles {
-		threadPool.Add(1)
-		go func(f *os.File) {
-			defer threadPool.Done()
-			newFile, err := filterEuropeanLines(f)
-			if err != nil {
-				panic(err)
-			}
-			channelNewFiles <- newFile
-		}(unFiltered)
+	out := make(chan Chunk) // implement new output channel
+
+	var wg sync.WaitGroup // wait until the threads are finished
+
+	for i := 0; i < workerCount; i++ { // generates goroutines
+
+		wg.Add(1) // adds a goroutine to the workgroup
+
+		go func() {
+			defer wg.Done() // signal know that the thread is finished
+
+			filterRangeWorker( // worker function
+				r,
+				in,
+				out,
+			)
+		}()
 	}
 
-	go func() { // wait till every GoRoutine is finished
-		threadPool.Wait()
-		close(channelNewFiles)
+	go func() { // wait for threads
+		wg.Wait()
+		close(out)
 	}()
 
-	var newFiles []*os.File
-	for file := range channelNewFiles {
-		newFiles = append(newFiles, file)
-	}
-
-	wordlist.tempFiles = newFiles
+	return out // return new channel
 }
 
-// filterEuropeanLines checks whether a character is likely to exist in European language usage
-// valid Character Encodings are:
-//   - ASCII
-//   - Latin-1 Supplement
-//   - Latin Extended-A and B
-//   - Latin Extended Additional
-//   - control characters
-//
-// invalid Character Encodings are:
-//   - Chinese
-//   - Korean
-//   - Armenian
-//   - Emojis
-//   - some IPA Extensions
-//   - some Spacing Modifier
-//   - Mathematical symbols (+, -, =, :, ... are VALID!)
-func filterEuropeanLines(inputFile *os.File) (*os.File, error) {
-	newFile, err := utils.GenerateNewTempFile("Filter_European*") // create new Wordlist
-	if err != nil {
-		return nil, err
-	}
-
-	isEuropeanRune := func(char rune) bool {
-		return (char >= 0x0000 && char <= 0x024F) || (char >= 0x1E00 && char <= 0x1EFF)
-	}
-
-	writer := bufio.NewWriterSize(newFile, 1024*1024) // 1 MB buffer
-	defer writer.Flush()
-
-	scanner := bufio.NewScanner(inputFile)
-
-outer:
-	for scanner.Scan() {
-		for _, char := range scanner.Text() {
-			if !isEuropeanRune(char) {
-				continue outer
-			}
+// filterMaskWorker Specifies the logic for how masks are filtered
+// msk - processed mask arg for filtering
+// in - the chunks to be filtered
+// out - the filtered chunks
+func filterMaskWorker(msk *generator.MaskInterpreter, in <-chan Chunk, out chan<- Chunk) {
+	for chunk := range in { // loop through all input chunks
+		filtered := Chunk{ // create a new empty chunk
+			Index: chunk.Index,
+			Lines: make([]string, 0, len(chunk.Lines)),
 		}
-		if _, err = writer.WriteString(scanner.Text() + "\n"); err != nil {
-			return nil, err
-		}
-	}
 
-	if err = scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	// Close and delete old file
-	if err = inputFile.Close(); err != nil {
-		return nil, err
-	}
-	if err = os.Remove(inputFile.Name()); err != nil {
-		return nil, err
-	}
-
-	return newFile, nil
-}
-
-func subtractWordlists(inputFile *os.File, subtractFiles []*os.File) error {
-	return nil
-}
-
-func (wordlist *EditWordlist) ConcurrentRemoveLinesWithChars(chars string) {
-	var threadPool sync.WaitGroup
-	channelNewFiles := make(chan *os.File) // channel to catch new paths
-
-	for _, unFiltered := range wordlist.tempFiles {
-		threadPool.Add(1)
-		go func(c string, f *os.File) {
-			defer threadPool.Done()
-			newFile, err := removeLinesWithChars(c, f)
-			if err != nil {
-				panic(err)
+		for _, line := range chunk.Lines { // loop through all lines in the input chunk
+			if generator.MatchesWord(msk, line) { // Filter out words that match the mask
+				continue
 			}
-			channelNewFiles <- newFile
-		}(chars, unFiltered)
+			filtered.Lines = append( // Write lines that match the range in the new chunk
+				filtered.Lines,
+				line,
+			)
+		}
+		out <- filtered // Write the filtered chunk to the output channel
 	}
+}
 
-	go func() { // wait till every GoRoutine is finished
-		threadPool.Wait()
-		close(channelNewFiles)
+// startFilterMask handles the go routines for the mask filter
+// msk - processed mask arg for filtering
+// workerCount - how many threads (workers) should be created
+// in - the chunks to be filtered
+func startFilterMask(msk *generator.MaskInterpreter, workerCount int, in <-chan Chunk) <-chan Chunk {
+	out := make(chan Chunk) // implement new output channel
+
+	var wg sync.WaitGroup // wait until the threads are finished
+
+	for i := 0; i < workerCount; i++ { // generates goroutines
+		wg.Add(1) // adds a goroutine to the workgroup
+
+		go func() {
+			defer wg.Done() // signal know that the thread is finished
+
+			filterMaskWorker( // worker function
+				msk,
+				in,
+				out)
+		}()
+	}
+	go func() { // wait for threads
+		wg.Wait()
+		close(out)
 	}()
 
-	var newFiles []*os.File
-	for file := range channelNewFiles {
-		newFiles = append(newFiles, file)
-	}
-
-	wordlist.tempFiles = newFiles
+	return out // return new channel
 }
 
-// removeLinesWithChars deletes all lines containing characters that are also in @param = chars
-//
-// Parameters:
-//   - chars: characters that may not appear in the line
-//   - inputFile: the file in which the deletion is supposed to take
-//
-// Returns:
-//   - *os.File: the cleaned-up file
-//   - error: error messages
-func removeLinesWithChars(chars string, inputFile *os.File) (*os.File, error) {
-	newFile, err := utils.GenerateNewTempFile("Filter_European*") // create new Wordlist
-	if err != nil {
-		return nil, err
-	}
+func filterSubstringsWorker() {
 
-	writer := bufio.NewWriterSize(newFile, 1024*1024) // 1 MB buffer
-	defer writer.Flush()
+}
 
-	scanner := bufio.NewScanner(inputFile)
+func startFilterSubstrings() {
 
-outer:
-	for scanner.Scan() {
-		for _, char := range scanner.Text() {
-			for _, forbiddenChar := range chars {
-				if char == forbiddenChar {
-					continue outer
-				}
+}
+
+func regexFilterWorker(
+	re *regexp.Regexp,
+	in <-chan Chunk,
+	out chan<- Chunk,
+) {
+
+	for chunk := range in {
+
+		filtered := Chunk{
+			Index: chunk.Index,
+			Lines: make([]string, 0, len(chunk.Lines)),
+		}
+
+		for _, line := range chunk.Lines {
+
+			if re.MatchString(line) {
+				continue
 			}
+
+			filtered.Lines = append(
+				filtered.Lines,
+				line,
+			)
 		}
-		if _, err = writer.WriteString(scanner.Text() + "\n"); err != nil {
-			return nil, err
-		}
-	}
 
-	if err = scanner.Err(); err != nil {
-		return nil, err
+		out <- filtered
 	}
-
-	// Close and delete old file
-	if err = inputFile.Close(); err != nil {
-		return nil, err
-	}
-	if err = os.Remove(inputFile.Name()); err != nil {
-		return nil, err
-	}
-
-	return newFile, nil
 }
 
-func (wordlist *EditWordlist) FlushFinishedWordlist() error {
-	if wordlist.isSorted {
-		err := MergeSortedFiles(wordlist.tempFiles, wordlist.outputPath)
+func startRegexFilter(
+	re *regexp.Regexp,
+	workerCount int,
+	in <-chan Chunk,
+) <-chan Chunk {
+
+	out := make(chan Chunk)
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < workerCount; i++ {
+
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			regexFilterWorker(
+				re,
+				in,
+				out,
+			)
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+
+	return out
+}
+
+func filterWordlistWorker() {
+
+}
+
+func startFilterWordlist() {
+
+}
+
+// EditWordlist Process all word list edits in a logical order and, if necessary, pass the chunks on to the next filter
+// inputPath - the path to the wordlist being processed, or stdin if “”
+// outputPath - the path where the word list should be saved. stdout if “”
+// filterRangeStr - specifies how the range should be filtered
+// frilterMaskStr - the masks that are to be filtered
+func EditWordlist(inputPath string, outputPath string, filterRangeStr string, filterMaskStr string, filterRegExArg string) error {
+	var input io.Reader
+	// INPUT VALIDATION
+	// Input is read from stdin or a file --------------------------------------------------------------
+	if inputPath == "" { // input is stdin
+		input = os.Stdin
+	} else { // file
+		absInputPath, err := utils.ResolvePath(inputPath) // resolving path to an absolute path
 		if err != nil {
 			return err
 		}
-	} else {
-		err := utils.MergeWordlists(wordlist.tempFiles, wordlist.outputPath)
+		openInputFile, err := os.Open(absInputPath) // open file
+		if err != nil {
+			return err
+		}
+		defer openInputFile.Close()
+		input = openInputFile
+	}
+	// INPUT VALIDATION END --------------------------------------------------
+
+	// OUTPUT VALIDATION
+	// The output is prepared here for writing to a file or stdout --------------------------------------
+	var output io.Writer
+	if outputPath == "" { // output ist stdout
+		output = os.Stdout
+	} else { // outputfile ist given
+		absOutputPath, err := utils.ListPath(outputPath) // makes the path absolute and adds the correct suffix to the output file
+		if err != nil {
+			return err
+		}
+		openOutputFile, err := os.Create(absOutputPath)
+		if err != nil {
+			return err
+		}
+		defer openOutputFile.Close()
+		output = openOutputFile
+	}
+	// OUTPUT VALIDATION END ------------------------------------------------
+
+	// If range filters are to be applied, prepare them...
+	var lineRange *utils.Uint64Range
+	if filterRangeStr != "" {
+		var err error
+		lineRange, err = utils.NewUint64Range(filterRangeStr)
 		if err != nil {
 			return err
 		}
 	}
 
-	err := utils.RemoveSplitWordlist(wordlist.tempFiles)
+	// If mask filters are to be applied, prepare them...
+	var msk *generator.MaskInterpreter
+	if filterMaskStr != "" {
+		var err error
+		msk, err = generator.NewMaskInterpreter(filterMaskStr)
+		if err != nil {
+			return err
+		}
+	}
+
+	// if regex filters are applied
+	var regExFilter *regexp.Regexp
+	if filterRegExArg != "" {
+		var err error
+		regExFilter, err = regexp.Compile(filterRegExArg)
+		if err != nil {
+			return err
+		}
+	}
+
+	// prepare here more filters
+
+	// loading chunk size from config file
+	cfgPath, err := utils.GetConfigPath()
 	if err != nil {
 		return err
 	}
-	return nil
+	cfg, err := utils.LoadConfig(cfgPath)
+	if err != nil {
+		return err
+	}
+
+	current := startReader( // channel who get read and changed
+		input,
+		cfg.General.ChunkLineSize,
+	)
+
+	if lineRange != nil {
+
+		current = startFilterRange(
+			lineRange,
+			runtime.NumCPU(),
+			current,
+		)
+	}
+	if msk != nil {
+
+		current = startFilterMask(
+			msk,
+			runtime.NumCPU(),
+			current,
+		)
+	}
+	if regExFilter != nil {
+
+		current = startRegexFilter(
+			regExFilter,
+			runtime.NumCPU(),
+			current,
+		)
+	}
+
+	return writeChunks(
+		output,
+		current,
+	)
 }

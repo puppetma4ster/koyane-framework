@@ -121,7 +121,7 @@ func ExternalSort(inputFile *os.File, outputFile *os.File) error {
 	}
 
 	outWriter.Flush()
-	// removeing chunks
+	// removing chunks
 	err = os.RemoveAll(newTempFolder)
 	if err != nil {
 		return err
@@ -317,7 +317,7 @@ func NewUint64Range(arg string) (*Uint64Range, error) {
 	if b == "" || b == "*" {
 		// open
 	} else if v, err := strconv.ParseUint(b, 10, 64); err != nil {
-		return nil, fmt.Errorf("the Minimal Range is not a number or \"*\": %s", b) // (genau deine Message für max)
+		return nil, fmt.Errorf("the Minimal Range is not a number or \"*\": %s", b)
 	} else {
 		maxNumber = v
 		maxPtr = &maxNumber
@@ -364,7 +364,7 @@ func NewFloat64Range(arg string) (*Float64Range, error) {
 	if b == "" || b == "*" {
 		// open
 	} else if v, err := strconv.ParseFloat(b, 64); err != nil {
-		return nil, fmt.Errorf("the Minimal Range is not a number or \"*\": %s", b) // gleiche Message wie gewünscht
+		return nil, fmt.Errorf("the Minimal Range is not a number or \"*\": %s", b)
 	} else {
 		maxNumber = v
 		maxPtr = &maxNumber
@@ -385,6 +385,7 @@ type Config struct {
 		UserAgent            string `yaml:"user_agent"`
 		DatabasePath         string `yaml:"wordlist_db_path"`
 		MultiThreadFileLines uint32 `yaml:"multithread_file_lines"`
+		ChunkLineSize        int    `yaml:"chunk_line_size"`
 	} `yaml:"general"`
 	Ui struct {
 		Language            string `yaml:"language"`
@@ -586,7 +587,7 @@ func RemoveSplitWordlist(files []*os.File) error {
 
 func CloseAllFiles(f []*os.File) {
 	for _, file := range f {
-		file.Close() // funktioniert, weil file vom Typ *os.File ist
+		file.Close()
 	}
 }
 
@@ -659,7 +660,7 @@ func formatIntWithCommas(n int64) string {
 	return out
 }
 
-// FormatUint64WithCommas returns a uint64 as string with commas as thousands separators.
+// FormatUint64WithCommas returns an uint64 as string with commas as thousands separators.
 func FormatUint64WithCommas(n uint64) string {
 	s := strconv.FormatUint(n, 10) // uint64 -> string
 

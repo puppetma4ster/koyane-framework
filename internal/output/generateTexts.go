@@ -1,5 +1,11 @@
 package output
 
+import (
+	"fmt"
+
+	"github.com/common-nighthawk/go-figure"
+)
+
 var GenerateMessages = map[string]string{
 	"use":   "kyfgen",
 	"short": "generating wordlists using different methods",
@@ -58,14 +64,15 @@ If PATTERN is specified (as a regular expression), only the words that match thi
 }
 
 var AnalyzeHelpTexts = map[string]string{
-	"use":      "kyfinfo",
-	"short":    "Analyze wordlists",
-	"long":     "Analyzes an existing word list and lists information such as character statistics about the list",
-	"all":      "Prints all gathered word list information",
-	"general":  "Prints all collected word list information belonging to the General Information category.",
-	"content":  "Prints all collected word list information belonging to the Content Information category.",
-	"stats":    "Prints all gathered statistics about the wordlist",
-	"saveFile": "Creates a file with the output print. A path with the name of the file to be created must be specified.",
+	"use":        "kyfinfo",
+	"short":      "Analyze wordlists",
+	"long":       "Analyzes an existing word list and lists information such as character statistics about the list",
+	"all":        "Prints all gathered word list information",
+	"general":    "Prints all collected word list information belonging to the General Information category.",
+	"content":    "Prints all collected word list information belonging to the Content Information category.",
+	"stats":      "Prints all gathered statistics about the wordlist",
+	"saveFile":   "Creates a file with the output print. A path with the name of the file to be created must be specified.",
+	"duplicates": "printed as words that appear as duplicates. WARNING: If there are many duplicates, the UI can become very cluttered.",
 }
 
 var SearchHelpTexts = map[string]string{
@@ -113,4 +120,11 @@ var GenerateRootHelpTexts = map[string]string{
 	"long":    "Koyane-Framework :: wordlist forge & analysis toolkit made by Puppetm4ster",
 	"toggle":  "",
 	"version": "shows the version of the program",
+}
+
+func PrintBanner() {
+	figure.NewFigure("KOYANE-FRAMEWORK", "doom", true).Print()
+	fmt.Println("Koyane-Framework :: wordlist forge & analysis toolkit")
+	fmt.Println("made by Puppetm4ster")
+	fmt.Println("\n\n\n")
 }

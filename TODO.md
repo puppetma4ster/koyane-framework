@@ -1,5 +1,7 @@
 TODO:
+- tmp dir check (os.MkdirTemp)
 - subtract wordlists method for edit module
+- invert edit filters with --invert
 - regex filter mode for edit
 - statistics about pw endings like percent with digits usw
 - Correctly analyze file banners in edit mode to edit files
