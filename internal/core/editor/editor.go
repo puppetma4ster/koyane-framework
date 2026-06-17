@@ -11,6 +11,7 @@ import (
 
 	"github.com/puppetma4ster/koyane-framework/internal/core/generator"
 	"github.com/puppetma4ster/koyane-framework/internal/core/utils"
+	"github.com/puppetma4ster/koyane-framework/internal/output"
 )
 
 // Chunk struct for managing individual chunks
@@ -174,7 +175,7 @@ func writeChunks(output io.Writer, in <-chan Chunk) error {
 // r - range to filter
 // in -the chunk being filtered
 // out - the finished filtered chunk
-func filterRangeWorker(r *utils.Uint64Range, in <-chan Chunk, out chan<- Chunk) {
+func filterRangeWorker(r *utils.Uint64Range, in <-chan Chunk, out chan<- Chunk, invert bool) {
 	for chunk := range in { // loop through all the given chunks
 
 		filtered := Chunk{ // create a new empty chunk
@@ -186,13 +187,22 @@ func filterRangeWorker(r *utils.Uint64Range, in <-chan Chunk, out chan<- Chunk) 
 
 			l := uint64(utf8.RuneCountInString(line)) // count the characters in the line
 
-			// NOTE: Here, inversion can be easily implemented using if-else statements.
-			if r.Min != nil && l < *r.Min { // the line character is less than the minimum range
-				continue // skip
+			match := true
+
+			if r.Min != nil && l < *r.Min {
+				match = false
 			}
 
-			if r.Max != nil && l > *r.Max { // if the line length exceeds the maximum range
-				continue // skip
+			if r.Max != nil && l > *r.Max {
+				match = false
+			}
+
+			if invert {
+				match = !match
+			}
+
+			if match {
+				continue
 			}
 
 			filtered.Lines = append( // Write lines that match the range in the new chunk
@@ -213,6 +223,7 @@ func startFilterRange(
 	r *utils.Uint64Range,
 	workerCount int,
 	in <-chan Chunk,
+	invert bool,
 ) <-chan Chunk {
 
 	out := make(chan Chunk) // implement new output channel
@@ -230,6 +241,7 @@ func startFilterRange(
 				r,
 				in,
 				out,
+				invert,
 			)
 		}()
 	}
@@ -246,7 +258,7 @@ func startFilterRange(
 // msk - processed mask arg for filtering
 // in - the chunks to be filtered
 // out - the filtered chunks
-func filterMaskWorker(msk *generator.MaskInterpreter, in <-chan Chunk, out chan<- Chunk) {
+func filterMaskWorker(msk *generator.MaskInterpreter, in <-chan Chunk, out chan<- Chunk, invert bool) {
 	for chunk := range in { // loop through all input chunks
 		filtered := Chunk{ // create a new empty chunk
 			Index: chunk.Index,
@@ -254,7 +266,14 @@ func filterMaskWorker(msk *generator.MaskInterpreter, in <-chan Chunk, out chan<
 		}
 
 		for _, line := range chunk.Lines { // loop through all lines in the input chunk
-			if generator.MatchesWord(msk, line) { // Filter out words that match the mask
+
+			match := generator.MatchesWord(msk, line)
+
+			if invert {
+				match = !match
+			}
+
+			if match { // Filter out words that match the mask
 				continue
 			}
 			filtered.Lines = append( // Write lines that match the range in the new chunk
@@ -270,7 +289,7 @@ func filterMaskWorker(msk *generator.MaskInterpreter, in <-chan Chunk, out chan<
 // msk - processed mask arg for filtering
 // workerCount - how many threads (workers) should be created
 // in - the chunks to be filtered
-func startFilterMask(msk *generator.MaskInterpreter, workerCount int, in <-chan Chunk) <-chan Chunk {
+func startFilterMask(msk *generator.MaskInterpreter, workerCount int, in <-chan Chunk, invert bool) <-chan Chunk {
 	out := make(chan Chunk) // implement new output channel
 
 	var wg sync.WaitGroup // wait until the threads are finished
@@ -284,7 +303,9 @@ func startFilterMask(msk *generator.MaskInterpreter, workerCount int, in <-chan 
 			filterMaskWorker( // worker function
 				msk,
 				in,
-				out)
+				out,
+				invert,
+			)
 		}()
 	}
 	go func() { // wait for threads
@@ -307,6 +328,7 @@ func regexFilterWorker(
 	re *regexp.Regexp,
 	in <-chan Chunk,
 	out chan<- Chunk,
+	invert bool,
 ) {
 
 	for chunk := range in {
@@ -318,7 +340,13 @@ func regexFilterWorker(
 
 		for _, line := range chunk.Lines {
 
-			if re.MatchString(line) {
+			match := re.MatchString(line)
+
+			if invert {
+				match = !match
+			}
+
+			if match {
 				continue
 			}
 
@@ -336,6 +364,7 @@ func startRegexFilter(
 	re *regexp.Regexp,
 	workerCount int,
 	in <-chan Chunk,
+	invert bool,
 ) <-chan Chunk {
 
 	out := make(chan Chunk)
@@ -353,6 +382,7 @@ func startRegexFilter(
 				re,
 				in,
 				out,
+				invert,
 			)
 		}()
 	}
@@ -378,17 +408,27 @@ func startFilterWordlist() {
 // outputPath - the path where the word list should be saved. stdout if “”
 // filterRangeStr - specifies how the range should be filtered
 // frilterMaskStr - the masks that are to be filtered
-func EditWordlist(inputPath string, outputPath string, filterRangeStr string, filterMaskStr string, filterRegExArg string) error {
+func EditWordlist(
+	inputPath string, outputPath string, muteStatusMessages bool,
+	filterRangeStr string, invRangeArg string, // range filter args
+	filterMaskStr string, invMaskArg string, //
+	filterRegExArg string, invRegexArg string) error {
 	var input io.Reader
+
+	var statusInputPath string
+	var statusOutputPath string
 	// INPUT VALIDATION
 	// Input is read from stdin or a file --------------------------------------------------------------
 	if inputPath == "" { // input is stdin
 		input = os.Stdin
+		statusInputPath = "stdin"
 	} else { // file
 		absInputPath, err := utils.ResolvePath(inputPath) // resolving path to an absolute path
 		if err != nil {
 			return err
 		}
+		statusInputPath = absInputPath
+
 		openInputFile, err := os.Open(absInputPath) // open file
 		if err != nil {
 			return err
@@ -400,20 +440,23 @@ func EditWordlist(inputPath string, outputPath string, filterRangeStr string, fi
 
 	// OUTPUT VALIDATION
 	// The output is prepared here for writing to a file or stdout --------------------------------------
-	var output io.Writer
+	var outputWriter io.Writer
 	if outputPath == "" { // output ist stdout
-		output = os.Stdout
+		outputWriter = os.Stdout
+		statusOutputPath = "stdout"
 	} else { // outputfile ist given
 		absOutputPath, err := utils.ListPath(outputPath) // makes the path absolute and adds the correct suffix to the output file
 		if err != nil {
 			return err
 		}
+		statusOutputPath = absOutputPath
+
 		openOutputFile, err := os.Create(absOutputPath)
 		if err != nil {
 			return err
 		}
 		defer openOutputFile.Close()
-		output = openOutputFile
+		outputWriter = openOutputFile
 	}
 	// OUTPUT VALIDATION END ------------------------------------------------
 
@@ -422,6 +465,14 @@ func EditWordlist(inputPath string, outputPath string, filterRangeStr string, fi
 	if filterRangeStr != "" {
 		var err error
 		lineRange, err = utils.NewUint64Range(filterRangeStr)
+		if err != nil {
+			return err
+		}
+	}
+	var invLineRange *utils.Uint64Range
+	if invRangeArg != "" {
+		var err error
+		invLineRange, err = utils.NewUint64Range(filterRangeStr)
 		if err != nil {
 			return err
 		}
@@ -436,12 +487,28 @@ func EditWordlist(inputPath string, outputPath string, filterRangeStr string, fi
 			return err
 		}
 	}
+	var invMaskFilter *generator.MaskInterpreter
+	if invMaskArg != "" {
+		var err error
+		invMaskFilter, err = generator.NewMaskInterpreter(invMaskArg)
+		if err != nil {
+			return err
+		}
+	}
 
 	// if regex filters are applied
 	var regExFilter *regexp.Regexp
 	if filterRegExArg != "" {
 		var err error
 		regExFilter, err = regexp.Compile(filterRegExArg)
+		if err != nil {
+			return err
+		}
+	}
+	var invRegExFilter *regexp.Regexp
+	if invRegexArg != "" {
+		var err error
+		invRegExFilter, err = regexp.Compile(invRegexArg)
 		if err != nil {
 			return err
 		}
@@ -459,6 +526,9 @@ func EditWordlist(inputPath string, outputPath string, filterRangeStr string, fi
 		return err
 	}
 
+	if !muteStatusMessages {
+		output.PrintStatus("statusEditor", "readWordlist", statusInputPath)
+	}
 	current := startReader( // channel who get read and changed
 		input,
 		cfg.General.ChunkLineSize,
@@ -467,31 +537,89 @@ func EditWordlist(inputPath string, outputPath string, filterRangeStr string, fi
 
 	if lineRange != nil {
 
+		if !muteStatusMessages {
+			output.PrintStatus("statusEditor", "rangeFilter")
+		}
+
 		current = startFilterRange(
 			lineRange,
 			runtime.NumCPU(),
 			current,
+			false,
 		)
 	}
+	if invLineRange != nil {
+
+		if !muteStatusMessages {
+			output.PrintStatus("statusEditor", "rangeFilter")
+		}
+
+		current = startFilterRange(
+			lineRange,
+			runtime.NumCPU(),
+			current,
+			true,
+		)
+	}
+
 	if msk != nil {
+
+		if !muteStatusMessages {
+			output.PrintStatus("statusEditor", "maskFilter")
+		}
 
 		current = startFilterMask(
 			msk,
 			runtime.NumCPU(),
 			current,
+			false,
 		)
 	}
+	if invMaskFilter != nil {
+		if !muteStatusMessages {
+			output.PrintStatus("statusEditor", "maskFilter")
+		}
+
+		current = startFilterMask(
+			msk,
+			runtime.NumCPU(),
+			current,
+			true,
+		)
+	}
+
 	if regExFilter != nil {
+
+		if !muteStatusMessages {
+			output.PrintStatus("statusEditor", "regExFilter")
+		}
 
 		current = startRegexFilter(
 			regExFilter,
 			runtime.NumCPU(),
 			current,
+			false,
+		)
+	}
+	if invRegExFilter != nil {
+
+		if !muteStatusMessages {
+			output.PrintStatus("statusEditor", "regExFilter")
+		}
+
+		current = startRegexFilter(
+			regExFilter,
+			runtime.NumCPU(),
+			current,
+			true,
 		)
 	}
 
+	if !muteStatusMessages {
+		output.PrintStatus("statusEditor", "writeWordlist", statusOutputPath)
+	}
 	return writeChunks(
-		output,
+		outputWriter,
 		current,
 	)
 }

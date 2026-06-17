@@ -13,8 +13,11 @@ var (
 	outputFilePath    string
 	sortArg           bool
 	filterMaskArg     string
+	invertFilterMaskArg string
 	filterRangeArg    string
+	invertFilterRangeArg string
 	filterRegExArg    string
+	invertFilterRexExArg string
 	europeanArg       bool
 	deleteOriginalArg bool
 	stdout            bool
@@ -35,7 +38,15 @@ var editCmd = &cobra.Command{
 		if !stdout {
 			go output.Spinner("Edit File", stop)
 		}
-		err := editor.EditWordlist(inputFilePath, outputFilePath, filterRangeArg, filterMaskArg, filterRegExArg)
+		var muteStatusMessages = false
+		if stdout {
+			muteStatusMessages = true
+		}
+		err := editor.EditWordlist(inputFilePath, outputFilePath, muteStatusMessages,
+			filterRangeArg, invertFilterRangeArg,
+			filterMaskArg, invertFilterMaskArg,
+			filterRegExArg, invertFilterRexExArg
+		)
 		if err != nil {
 			output.PrintError("errors", "error", err)
 			os.Exit(1)
@@ -61,9 +72,16 @@ func init() {
 
 	editCmd.Flags().BoolVar(&stdout, "stdout", false, "sort words")
 	editCmd.Flags().BoolVarP(&sortArg, "sort", "s", false, output.GenerateEditHelpTexts["sort"])
+
 	editCmd.Flags().StringVarP(&filterMaskArg, "filter-mask", "m", "", output.GenerateEditHelpTexts["removeMask"])
+	editCmd.Flags().StringVarP(&invertFilterMaskArg, "keep-mask", "-M", "", "TODO")
+
 	editCmd.Flags().StringVarP(&filterRangeArg, "filter-range", "r", "", output.GenerateEditHelpTexts["removeRange"])
-	editCmd.Flags().StringVarP(&filterRegExArg, "filter-chars", "x", "", output.GenerateEditHelpTexts["removeChars"])
+	editCmd.Flags().StringVarP(&invertFilterRangeArg, "keep-range", "r", "", "TODO")
+
+	editCmd.Flags().StringVarP(&filterRegExArg, "filter-regex", "x", "", output.GenerateEditHelpTexts["removeChars"])
+	editCmd.Flags().StringVarP(&invertFilterRexExArg, "keep-rex", "X", "", "TODO")
+
 	editCmd.Flags().BoolVar(&europeanArg, "european", false, output.GenerateEditHelpTexts["european"])
 	editCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, output.GenerateEditHelpTexts["quiet"])
 	editCmd.Flags().BoolVarP(&deleteOriginalArg, "delete", "d", false, output.GenerateEditHelpTexts["delete"])

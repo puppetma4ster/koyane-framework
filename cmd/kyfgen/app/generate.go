@@ -33,7 +33,7 @@ var generateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// print banner
-		if !quiet || !stdout {
+		if !quiet && !stdout {
 			output.PrintBanner()
 		}
 		err := utils.CreateTempDir() // generate tmp dir if no tmp dir is found

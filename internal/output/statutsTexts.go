@@ -45,6 +45,16 @@ var StatusMessages = map[string]StatusCategory{
 			"archiveCreated":  "Compressed wordlist successfully created at: %s",
 		},
 	},
+	"statusEditor": {
+		Prefix: "[*]",
+		Messages: map[string]string{
+			"readWordlist":  "Read wordlist from: %s",
+			"rangeFilter":   "Applying range filter...",
+			"maskFilter":    "Applying mask filter...",
+			"RegExpFilter":  "Applying RegEx filter...",
+			"writeWordlist": "Write wordlist to: %s",
+		},
+	},
 	"statusGet": {
 		Prefix: "[*]",
 		Messages: map[string]string{
