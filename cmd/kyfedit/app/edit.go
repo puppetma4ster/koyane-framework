@@ -78,7 +78,7 @@ func init() {
 	editCmd.Flags().StringArrayVarP(&invertFilterMaskArg, "keep-mask", "M", nil, "TODO")
 
 	editCmd.Flags().StringArrayVarP(&filterRangeArg, "filter-range", "r", nil, output.GenerateEditHelpTexts["removeRange"])
-	editCmd.Flags().StringArrayVarP(&invertFilterRangeArg, "keep-range", "r", nil, "TODO")
+	editCmd.Flags().StringArrayVarP(&invertFilterRangeArg, "keep-range", "R", nil, "TODO")
 
 	editCmd.Flags().StringArrayVarP(&filterRegExArg, "filter-regex", "x", nil, output.GenerateEditHelpTexts["removeChars"])
 	editCmd.Flags().StringArrayVarP(&invertFilterRexExArg, "keep-rex", "X", nil, "TODO")
