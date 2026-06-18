@@ -72,10 +72,10 @@ func init() {
 	editCmd.Flags().StringVarP(&outputFilePath, "output", "o", "", "output file path")
 
 	editCmd.Flags().BoolVar(&stdout, "stdout", false, "sort words")
-	editCmd.Flags().BoolVarP(&sortArg, "sort", "s", false, output.GenerateEditHelpTexts["sort"])
+	// editCmd.Flags().BoolVarP(&sortArg, "sort", "s", false, output.GenerateEditHelpTexts["sort"])
 
 	editCmd.Flags().StringArrayVarP(&filterMaskArg, "filter-mask", "m", nil, output.GenerateEditHelpTexts["removeMask"])
-	editCmd.Flags().StringArrayVarP(&invertFilterMaskArg, "keep-mask", "-M", nil, "TODO")
+	editCmd.Flags().StringArrayVarP(&invertFilterMaskArg, "keep-mask", "M", nil, "TODO")
 
 	editCmd.Flags().StringArrayVarP(&filterRangeArg, "filter-range", "r", nil, output.GenerateEditHelpTexts["removeRange"])
 	editCmd.Flags().StringArrayVarP(&invertFilterRangeArg, "keep-range", "r", nil, "TODO")
@@ -83,8 +83,8 @@ func init() {
 	editCmd.Flags().StringArrayVarP(&filterRegExArg, "filter-regex", "x", nil, output.GenerateEditHelpTexts["removeChars"])
 	editCmd.Flags().StringArrayVarP(&invertFilterRexExArg, "keep-rex", "X", nil, "TODO")
 
-	editCmd.Flags().BoolVar(&europeanArg, "european", false, output.GenerateEditHelpTexts["european"])
+	// editCmd.Flags().BoolVar(&europeanArg, "european", false, output.GenerateEditHelpTexts["european"])
 	editCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, output.GenerateEditHelpTexts["quiet"])
-	editCmd.Flags().BoolVarP(&deleteOriginalArg, "delete", "d", false, output.GenerateEditHelpTexts["delete"])
+	// editCmd.Flags().BoolVarP(&deleteOriginalArg, "delete", "d", false, output.GenerateEditHelpTexts["delete"])
 
 }
