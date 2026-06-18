@@ -9,19 +9,20 @@ import (
 )
 
 var (
-	inputFilePath     string
-	outputFilePath    string
-	sortArg           bool
-	filterMaskArg     string
-	invertFilterMaskArg string
-	filterRangeArg    string
-	invertFilterRangeArg string
-	filterRegExArg    string
-	invertFilterRexExArg string
-	europeanArg       bool
-	deleteOriginalArg bool
-	stdout            bool
-	quiet             bool
+	inputFilePath  string
+	outputFilePath string
+	sortArg        bool
+
+	filterMaskArg        []string
+	invertFilterMaskArg  []string
+	filterRangeArg       []string
+	invertFilterRangeArg []string
+	filterRegExArg       []string
+	invertFilterRexExArg []string
+	europeanArg          bool
+	deleteOriginalArg    bool
+	stdout               bool
+	quiet                bool
 )
 var editCmd = &cobra.Command{
 	Use:   output.GenerateEditHelpTexts["use"],
@@ -45,7 +46,7 @@ var editCmd = &cobra.Command{
 		err := editor.EditWordlist(inputFilePath, outputFilePath, muteStatusMessages,
 			filterRangeArg, invertFilterRangeArg,
 			filterMaskArg, invertFilterMaskArg,
-			filterRegExArg, invertFilterRexExArg
+			filterRegExArg, invertFilterRexExArg,
 		)
 		if err != nil {
 			output.PrintError("errors", "error", err)
@@ -73,14 +74,14 @@ func init() {
 	editCmd.Flags().BoolVar(&stdout, "stdout", false, "sort words")
 	editCmd.Flags().BoolVarP(&sortArg, "sort", "s", false, output.GenerateEditHelpTexts["sort"])
 
-	editCmd.Flags().StringVarP(&filterMaskArg, "filter-mask", "m", "", output.GenerateEditHelpTexts["removeMask"])
-	editCmd.Flags().StringVarP(&invertFilterMaskArg, "keep-mask", "-M", "", "TODO")
+	editCmd.Flags().StringArrayVarP(&filterMaskArg, "filter-mask", "m", nil, output.GenerateEditHelpTexts["removeMask"])
+	editCmd.Flags().StringArrayVarP(&invertFilterMaskArg, "keep-mask", "-M", nil, "TODO")
 
-	editCmd.Flags().StringVarP(&filterRangeArg, "filter-range", "r", "", output.GenerateEditHelpTexts["removeRange"])
-	editCmd.Flags().StringVarP(&invertFilterRangeArg, "keep-range", "r", "", "TODO")
+	editCmd.Flags().StringArrayVarP(&filterRangeArg, "filter-range", "r", nil, output.GenerateEditHelpTexts["removeRange"])
+	editCmd.Flags().StringArrayVarP(&invertFilterRangeArg, "keep-range", "r", nil, "TODO")
 
-	editCmd.Flags().StringVarP(&filterRegExArg, "filter-regex", "x", "", output.GenerateEditHelpTexts["removeChars"])
-	editCmd.Flags().StringVarP(&invertFilterRexExArg, "keep-rex", "X", "", "TODO")
+	editCmd.Flags().StringArrayVarP(&filterRegExArg, "filter-regex", "x", nil, output.GenerateEditHelpTexts["removeChars"])
+	editCmd.Flags().StringArrayVarP(&invertFilterRexExArg, "keep-rex", "X", nil, "TODO")
 
 	editCmd.Flags().BoolVar(&europeanArg, "european", false, output.GenerateEditHelpTexts["european"])
 	editCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, output.GenerateEditHelpTexts["quiet"])

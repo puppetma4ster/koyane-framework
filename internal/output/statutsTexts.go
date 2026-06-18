@@ -48,11 +48,14 @@ var StatusMessages = map[string]StatusCategory{
 	"statusEditor": {
 		Prefix: "[*]",
 		Messages: map[string]string{
-			"readWordlist":  "Read wordlist from: %s",
-			"rangeFilter":   "Applying range filter...",
-			"maskFilter":    "Applying mask filter...",
-			"RegExpFilter":  "Applying RegEx filter...",
-			"writeWordlist": "Write wordlist to: %s",
+			"readWordlist":   "Read wordlist from: %s",
+			"rangeFilter":    "Applying range filter",
+			"invRangeFilter": "Applying inverted range filter",
+			"maskFilter":     "Applying mask filter: %s",
+			"invMaskFilter":  "Applying inverted mask filter: %s",
+			"regExFilter":    "Applying RegEx filter: %s",
+			"invRegExFilter": "Applying RegEx filter: %s",
+			"writeWordlist":  "Write wordlist to: %s",
 		},
 	},
 	"statusGet": {

@@ -23,7 +23,7 @@ Due to the program's path handling, it will probably not be able to run on Windo
 Future versions are also planned to be compatible with Windows.
 
 #### requirements 
-- [golang](https://go.dev/) >= 1.24.0
+- [golang](https://go.dev/) >= 1.25.0
 - [make](https://www.gnu.org/software/make/)
 
 Debian, Ubuntu:

@@ -410,9 +410,9 @@ func startFilterWordlist() {
 // frilterMaskStr - the masks that are to be filtered
 func EditWordlist(
 	inputPath string, outputPath string, muteStatusMessages bool,
-	filterRangeStr string, invRangeArg string, // range filter args
-	filterMaskStr string, invMaskArg string, //
-	filterRegExArg string, invRegexArg string) error {
+	filterRangeArg []string, invRangeArg []string, // range filter args
+	filterMaskArg []string, invMaskArg []string, //
+	filterRegExArg []string, invRegexArg []string) error {
 	var input io.Reader
 
 	var statusInputPath string
@@ -461,56 +461,68 @@ func EditWordlist(
 	// OUTPUT VALIDATION END ------------------------------------------------
 
 	// If range filters are to be applied, prepare them...
-	var lineRange *utils.Uint64Range
-	if filterRangeStr != "" {
-		var err error
-		lineRange, err = utils.NewUint64Range(filterRangeStr)
-		if err != nil {
-			return err
+	var lineRanges []*utils.Uint64Range
+	if filterRangeArg != nil {
+		for _, r := range filterRangeArg {
+			lineRange, err := utils.NewUint64Range(r)
+			if err != nil {
+				return err
+			}
+			lineRanges = append(lineRanges, lineRange)
 		}
 	}
-	var invLineRange *utils.Uint64Range
-	if invRangeArg != "" {
-		var err error
-		invLineRange, err = utils.NewUint64Range(filterRangeStr)
-		if err != nil {
-			return err
+	var invLineRanges []*utils.Uint64Range
+	if invRangeArg != nil {
+		for _, r := range invRangeArg {
+			lineRange, err := utils.NewUint64Range(r)
+			if err != nil {
+				return err
+			}
+			invLineRanges = append(invLineRanges, lineRange)
 		}
 	}
 
 	// If mask filters are to be applied, prepare them...
-	var msk *generator.MaskInterpreter
-	if filterMaskStr != "" {
-		var err error
-		msk, err = generator.NewMaskInterpreter(filterMaskStr)
-		if err != nil {
-			return err
+	var maskFilters []*generator.MaskInterpreter
+	if filterMaskArg != nil {
+		for _, m := range filterMaskArg {
+			msk, err := generator.NewMaskInterpreter(m)
+			if err != nil {
+				return err
+			}
+			maskFilters = append(maskFilters, msk)
 		}
 	}
-	var invMaskFilter *generator.MaskInterpreter
-	if invMaskArg != "" {
-		var err error
-		invMaskFilter, err = generator.NewMaskInterpreter(invMaskArg)
-		if err != nil {
-			return err
+	var invMaskFilters []*generator.MaskInterpreter
+	if invMaskArg != nil {
+		for _, m := range invMaskArg {
+			msk, err := generator.NewMaskInterpreter(m)
+			if err != nil {
+				return err
+			}
+			invMaskFilters = append(invMaskFilters, msk)
 		}
 	}
 
 	// if regex filters are applied
-	var regExFilter *regexp.Regexp
-	if filterRegExArg != "" {
-		var err error
-		regExFilter, err = regexp.Compile(filterRegExArg)
-		if err != nil {
-			return err
+	var regExFilters []*regexp.Regexp
+	if filterRegExArg != nil {
+		for _, x := range filterRegExArg {
+			regEx, err := regexp.Compile(x)
+			if err != nil {
+				return err
+			}
+			regExFilters = append(regExFilters, regEx)
 		}
 	}
-	var invRegExFilter *regexp.Regexp
-	if invRegexArg != "" {
-		var err error
-		invRegExFilter, err = regexp.Compile(invRegexArg)
-		if err != nil {
-			return err
+	var invRegExFilters []*regexp.Regexp
+	if invRegexArg != nil {
+		for _, x := range invRegexArg {
+			invRegEx, err := regexp.Compile(x)
+			if err != nil {
+				return err
+			}
+			invRegExFilters = append(invRegExFilters, invRegEx)
 		}
 	}
 
@@ -529,95 +541,83 @@ func EditWordlist(
 	if !muteStatusMessages {
 		output.PrintStatus("statusEditor", "readWordlist", statusInputPath)
 	}
+
+	var threads int = runtime.NumCPU() * 4
+
 	current := startReader( // channel who get read and changed
 		input,
 		cfg.General.ChunkLineSize,
 		cfg.General.ByteLineLimit,
 	)
 
-	if lineRange != nil {
+	if lineRanges != nil {
 
-		if !muteStatusMessages {
-			output.PrintStatus("statusEditor", "rangeFilter")
+		for _, lineRange := range lineRanges {
+			if !muteStatusMessages {
+				output.PrintStatus("statusEditor", "rangeFilter")
+			}
+
+			current = startFilterRange(
+				lineRange,
+				threads,
+				current,
+				false,
+			)
 		}
-
-		current = startFilterRange(
-			lineRange,
-			runtime.NumCPU(),
-			current,
-			false,
-		)
 	}
-	if invLineRange != nil {
+	if invLineRanges != nil {
+		for _, invLineRange := range invLineRanges {
+			if !muteStatusMessages {
+				output.PrintStatus("statusEditor", "invRangeFilter")
+			}
 
-		if !muteStatusMessages {
-			output.PrintStatus("statusEditor", "rangeFilter")
+			current = startFilterRange(
+				invLineRange,
+				threads,
+				current,
+				true,
+			)
 		}
-
-		current = startFilterRange(
-			lineRange,
-			runtime.NumCPU(),
-			current,
-			true,
-		)
-	}
-
-	if msk != nil {
-
-		if !muteStatusMessages {
-			output.PrintStatus("statusEditor", "maskFilter")
-		}
-
-		current = startFilterMask(
-			msk,
-			runtime.NumCPU(),
-			current,
-			false,
-		)
-	}
-	if invMaskFilter != nil {
-		if !muteStatusMessages {
-			output.PrintStatus("statusEditor", "maskFilter")
-		}
-
-		current = startFilterMask(
-			msk,
-			runtime.NumCPU(),
-			current,
-			true,
-		)
 	}
 
-	if regExFilter != nil {
-
-		if !muteStatusMessages {
-			output.PrintStatus("statusEditor", "regExFilter")
+	if maskFilters != nil {
+		for _, mask := range maskFilters {
+			if !muteStatusMessages {
+				output.PrintStatus("statusEditor", "maskFilter", mask.Mask)
+			}
+			current = startFilterMask(mask, threads, current, false)
 		}
-
-		current = startRegexFilter(
-			regExFilter,
-			runtime.NumCPU(),
-			current,
-			false,
-		)
 	}
-	if invRegExFilter != nil {
-
-		if !muteStatusMessages {
-			output.PrintStatus("statusEditor", "regExFilter")
+	if invMaskFilters != nil {
+		for _, invMask := range invMaskFilters {
+			if !muteStatusMessages {
+				output.PrintStatus("statusEditor", "invMaskFilter", invMask.Mask)
+			}
+			current = startFilterMask(invMask, threads, current, true)
 		}
+	}
 
-		current = startRegexFilter(
-			regExFilter,
-			runtime.NumCPU(),
-			current,
-			true,
-		)
+	if regExFilters != nil {
+		for _, regEx := range regExFilters {
+			if !muteStatusMessages {
+				output.PrintStatus("statusEditor", "regExFilter", regEx.String())
+			}
+			current = startRegexFilter(regEx, threads, current, false)
+		}
+	}
+	if invRegExFilters != nil {
+		for _, invRegEx := range invRegExFilters {
+			if !muteStatusMessages {
+				output.PrintStatus("statusEditor", "invRegExFilter", invRegEx.String())
+			}
+			current = startRegexFilter(invRegEx, threads, current, true)
+		}
 	}
 
 	if !muteStatusMessages {
 		output.PrintStatus("statusEditor", "writeWordlist", statusOutputPath)
 	}
+
 	return writeChunks(
 		outputWriter,
 		current,

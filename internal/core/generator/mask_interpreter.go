@@ -34,7 +34,7 @@ func NewMaskInterpreter(msk string) (*MaskInterpreter, error) {
 			segment.WriteRune(char)
 		}
 	}
-	// Letztes Segment anhängen
+	// Append the last segment
 	if segment.Len() > 0 {
 		mc, err := NewMaskChar(segment.String(), insideMask)
 		if err != nil {
