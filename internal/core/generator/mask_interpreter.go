@@ -49,7 +49,7 @@ func NewMaskInterpreter(msk string) (*MaskInterpreter, error) {
 	}, nil
 }
 
-func MatchesWord(mask *MaskInterpreter, word string) bool {
+func (mask *MaskInterpreter) MatchesWord(word string) bool {
 	wordRunes := []rune(word)
 
 	if len(wordRunes) != len(mask.MaskSegments) {

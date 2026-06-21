@@ -4,6 +4,7 @@
       <w>abcdefghijklmnopqrstuvwxyz</w>
       <w>aeiou</w>
       <w>bcdfghjklmnpqrstvwxyz</w>
+      <w>wordlists</w>
     </words>
   </dictionary>
 </component>

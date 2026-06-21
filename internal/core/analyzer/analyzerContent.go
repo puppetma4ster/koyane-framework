@@ -50,7 +50,7 @@ func NewAnalyzerContent(inputFile *os.File, count, minMax, avLength, charFreq, a
 		if err != nil {
 			return nil, err
 		}
-		defer sortedFile.Close() // temp file wird geschlossen
+		defer sortedFile.Close() // temp file is closed
 
 		// sort inputFile → sortedFile
 		err = utils.ExternalSort(inputFile, sortedFile)
@@ -63,7 +63,7 @@ func NewAnalyzerContent(inputFile *os.File, count, minMax, avLength, charFreq, a
 		if err != nil {
 			return nil, err
 		}
-		defer fileToRead.Close() // sortedFile wird geschlossen, inputFile bleibt offen
+		defer fileToRead.Close() // sortedFile is closed, inputFile stays open
 	}
 
 	// scanning & analysis

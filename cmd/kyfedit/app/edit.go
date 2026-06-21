@@ -11,7 +11,7 @@ import (
 var (
 	inputFilePath  string
 	outputFilePath string
-	sortArg        bool
+	stdout         bool
 
 	filterMaskArg        []string
 	invertFilterMaskArg  []string
@@ -19,10 +19,14 @@ var (
 	invertFilterRangeArg []string
 	filterRegExArg       []string
 	invertFilterRexExArg []string
-	europeanArg          bool
-	deleteOriginalArg    bool
-	stdout               bool
-	quiet                bool
+	subtractWordlistsArg []string
+
+	sortArg          bool
+	removeDuplicates bool
+
+	europeanArg       bool
+	deleteOriginalArg bool
+	quiet             bool
 )
 var editCmd = &cobra.Command{
 	Use:   output.GenerateEditHelpTexts["use"],
@@ -47,6 +51,7 @@ var editCmd = &cobra.Command{
 			filterRangeArg, invertFilterRangeArg,
 			filterMaskArg, invertFilterMaskArg,
 			filterRegExArg, invertFilterRexExArg,
+			subtractWordlistsArg, sortArg, removeDuplicates,
 		)
 		if err != nil {
 			output.PrintError("errors", "error", err)
@@ -72,7 +77,6 @@ func init() {
 	editCmd.Flags().StringVarP(&outputFilePath, "output", "o", "", "output file path")
 
 	editCmd.Flags().BoolVar(&stdout, "stdout", false, "sort words")
-	// editCmd.Flags().BoolVarP(&sortArg, "sort", "s", false, output.GenerateEditHelpTexts["sort"])
 
 	editCmd.Flags().StringArrayVarP(&filterMaskArg, "filter-mask", "m", nil, output.GenerateEditHelpTexts["removeMask"])
 	editCmd.Flags().StringArrayVarP(&invertFilterMaskArg, "keep-mask", "M", nil, "TODO")
@@ -82,6 +86,11 @@ func init() {
 
 	editCmd.Flags().StringArrayVarP(&filterRegExArg, "filter-regex", "x", nil, output.GenerateEditHelpTexts["removeChars"])
 	editCmd.Flags().StringArrayVarP(&invertFilterRexExArg, "keep-rex", "X", nil, "TODO")
+
+	editCmd.Flags().StringArrayVar(&subtractWordlistsArg, "subtract-wl", nil, "TODO")
+
+	editCmd.Flags().BoolVarP(&sortArg, "sort", "s", false, output.GenerateEditHelpTexts["sort"])
+	editCmd.Flags().BoolVarP(&removeDuplicates, "remove-duplicates", "d", false, "TODO")
 
 	// editCmd.Flags().BoolVar(&europeanArg, "european", false, output.GenerateEditHelpTexts["european"])
 	editCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, output.GenerateEditHelpTexts["quiet"])
