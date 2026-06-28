@@ -385,7 +385,7 @@ type Config struct {
 		UserAgent            string `yaml:"user_agent"`
 		DatabasePath         string `yaml:"wordlist_db_path"`
 		MultiThreadFileLines uint32 `yaml:"multithread_file_lines"`
-		ChunkLineSize        int    `yaml:"chunk_line_size"`
+		ChunkByteSize        int    `yaml:"chunk_byte_size"`
 		ByteLineLimit        int    `yaml:"byte_line_limit"`
 	} `yaml:"general"`
 	Ui struct {

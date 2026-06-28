@@ -68,17 +68,20 @@ type tempRun struct {
 // chunkSize      - maximum number of lines per chunk
 // byteLineLimit  - maximum allowed line size in bytes (0 = unlimited)
 // out            - output channel for processed chunks
-func readChunksWorker(input io.Reader, chunkSize int, byteLineLimit int, out chan<- Chunk) error {
+func readChunksWorker(input io.Reader, chunkByteSize int, byteLineLimit int, out chan<- Chunk) error {
 
 	// Create a buffered reader
 	reader := bufio.NewReader(input)
 
+	estimatedAvgLineSize := 30 // ~ 30 bytes
+	estimatedLines := chunkByteSize / estimatedAvgLineSize
 	// Create the first chunk
 	chunk := Chunk{
 		Index: 0,
-		Lines: make([]string, 0, chunkSize),
+		Lines: make([]string, 0, estimatedLines),
 	}
 
+	currentBytes := 0 // chunk byte counter
 	for {
 
 		// Read one line including the trailing '\n'
@@ -88,24 +91,26 @@ func readChunksWorker(input io.Reader, chunkSize int, byteLineLimit int, out cha
 		if err != nil && err != io.EOF {
 			return err
 		}
-
+		lineSize := len(line)
 		// Process the line if any bytes were read
-		if len(line) > 0 {
+		if lineSize > 0 {
 
 			// Remove trailing newline
-			if line[len(line)-1] == '\n' {
-				line = line[:len(line)-1]
+			if line[lineSize-1] == '\n' {
+				line = line[:lineSize-1]
+				lineSize--
 			}
 
 			// Remove Windows carriage return
-			if len(line) > 0 &&
-				line[len(line)-1] == '\r' {
+			if lineSize > 0 &&
+				line[lineSize-1] == '\r' {
 
-				line = line[:len(line)-1]
+				line = line[:lineSize-1]
+				lineSize--
 			}
 
 			// Skip lines that exceed the configured limit
-			if byteLineLimit > 0 && len(line) > byteLineLimit {
+			if byteLineLimit > 0 && lineSize > byteLineLimit {
 
 				if err == io.EOF {
 					break
@@ -114,27 +119,27 @@ func readChunksWorker(input io.Reader, chunkSize int, byteLineLimit int, out cha
 				continue
 			}
 
-			// Append the line to the current chunk
+			// Would this line exceed the configured chunk size?
+			if currentBytes > 0 &&
+				currentBytes+lineSize > chunkByteSize {
+
+				out <- chunk
+
+				chunk = Chunk{
+					Index: chunk.Index + 1,
+					Lines: make([]string, 0, estimatedLines),
+				}
+
+				currentBytes = 0
+			}
+
+			// Append the line
 			chunk.Lines = append(
 				chunk.Lines,
 				string(line),
 			)
 
-			// Send the chunk if it is full
-			if len(chunk.Lines) == chunkSize {
-
-				out <- chunk
-
-				// Create a new empty chunk
-				chunk = Chunk{
-					Index: chunk.Index + 1,
-					Lines: make(
-						[]string,
-						0,
-						chunkSize,
-					),
-				}
-			}
+			currentBytes += lineSize
 		}
 
 		// End of file reached
@@ -159,7 +164,7 @@ func readChunksWorker(input io.Reader, chunkSize int, byteLineLimit int, out cha
 // and returns the output channel.
 func startReader(
 	input io.Reader,
-	chunkSize int,
+	chunkByteSize int,
 	byteLineLimit int,
 ) <-chan Chunk {
 
@@ -169,7 +174,7 @@ func startReader(
 
 		err := readChunksWorker(
 			input,
-			chunkSize,
+			chunkByteSize,
 			byteLineLimit,
 			out,
 		)
@@ -622,7 +627,6 @@ func externalSortWorker(
 
 		// Sort the chunk in memory.
 		sort.Strings(chunk.Lines)
-
 		// Create a new temporary file that will hold
 		// the sorted chunk.
 		tmpFile, err := os.CreateTemp(
@@ -964,7 +968,7 @@ func EditWordlist(
 
 	current := startReader( // channel who get read and changed
 		input,
-		cfg.General.ChunkLineSize,
+		cfg.General.ChunkByteSize,
 		cfg.General.ByteLineLimit,
 	)
 
