@@ -16,14 +16,6 @@ import (
 	"github.com/puppetma4ster/koyane-framework/internal/output"
 )
 
-// Chunk struct for managing individual chunks
-// Index - chunk number to ensure correct sequence
-// Lines - the words in the chunk
-type Chunk struct {
-	Index uint64
-	Lines []string
-}
-
 type rangeFilter struct {
 	rangeF *utils.Uint64Range
 }
@@ -60,168 +52,14 @@ type tempRun struct {
 	Err  error
 }
 
-// readChunksWorker reads the input stream line by line,
-// splits the input into chunks and sends them through
-// the output channel.
-//
-// input          - input stream (stdin or file)
-// chunkSize      - maximum number of lines per chunk
-// byteLineLimit  - maximum allowed line size in bytes (0 = unlimited)
-// out            - output channel for processed chunks
-func readChunksWorker(input io.Reader, chunkByteSize int, byteLineLimit int, out chan<- Chunk) error {
-
-	// Create a buffered reader
-	reader := bufio.NewReader(input)
-
-	estimatedAvgLineSize := 30 // ~ 30 bytes
-	estimatedLines := chunkByteSize / estimatedAvgLineSize
-	// Create the first chunk
-	chunk := Chunk{
-		Index: 0,
-		Lines: make([]string, 0, estimatedLines),
-	}
-
-	currentBytes := 0 // chunk byte counter
-	for {
-
-		// Read one line including the trailing '\n'
-		line, err := reader.ReadBytes('\n')
-
-		// Return unexpected errors
-		if err != nil && err != io.EOF {
-			return err
-		}
-		lineSize := len(line)
-		// Process the line if any bytes were read
-		if lineSize > 0 {
-
-			// Remove trailing newline
-			if line[lineSize-1] == '\n' {
-				line = line[:lineSize-1]
-				lineSize--
-			}
-
-			// Remove Windows carriage return
-			if lineSize > 0 &&
-				line[lineSize-1] == '\r' {
-
-				line = line[:lineSize-1]
-				lineSize--
-			}
-
-			// Skip lines that exceed the configured limit
-			if byteLineLimit > 0 && lineSize > byteLineLimit {
-
-				if err == io.EOF {
-					break
-				}
-				// TODO: implement warning log/output print
-				continue
-			}
-
-			// Would this line exceed the configured chunk size?
-			if currentBytes > 0 &&
-				currentBytes+lineSize > chunkByteSize {
-
-				out <- chunk
-
-				chunk = Chunk{
-					Index: chunk.Index + 1,
-					Lines: make([]string, 0, estimatedLines),
-				}
-
-				currentBytes = 0
-			}
-
-			// Append the line
-			chunk.Lines = append(
-				chunk.Lines,
-				string(line),
-			)
-
-			currentBytes += lineSize
-		}
-
-		// End of file reached
-		if err == io.EOF {
-			break
-		}
-	}
-
-	// Flush the last partially filled chunk
-	if len(chunk.Lines) > 0 {
-		out <- chunk
-	}
-
-	// Close the output channel
-	close(out)
-
-	return nil
-}
-
-// startReader creates the first stage of the pipeline.
-// It reads the input stream, splits it into chunks
-// and returns the output channel.
-func startReader(
-	input io.Reader,
-	chunkByteSize int,
-	byteLineLimit int,
-) <-chan Chunk {
-
-	out := make(chan Chunk)
-
-	go func() {
-
-		err := readChunksWorker(
-			input,
-			chunkByteSize,
-			byteLineLimit,
-			out,
-		)
-
-		if err != nil {
-			panic(err)
-		}
-
-	}()
-
-	return out
-}
-
-// writeChunks writes each processed chunk to stdout or to a file
-// output - where to write (open file or stdout)
-// in - channel containing the finished chunks
-func writeChunks(output io.Writer, in <-chan Chunk) error {
-
-	writer := bufio.NewWriter(output) // Create the Writer
-
-	for chunk := range in { // loop through all chunks
-
-		for _, line := range chunk.Lines { // loop through all chunk lines
-
-			_, err := writer.WriteString( // Write a line with a line break
-				line + "\n",
-			)
-
-			if err != nil {
-				return err
-			}
-		}
-	}
-	if err := writer.Flush(); err != nil { // if errors occurred during the writing process
-		return err
-	}
-	return nil
-}
-
 // removeRangeWorker specifies how the range is filtered
 // r - range to filter
 // in -the chunk being filtered
 // out - the finished filtered chunk
-func filterRangeWorker(filterRanges []*rangeFilter, invFilterRanges []*rangeFilter, in <-chan Chunk, out chan<- Chunk) {
+func filterRangeWorker(filterRanges []*rangeFilter, invFilterRanges []*rangeFilter, in <-chan utils.Chunk, out chan<- utils.Chunk) {
 	for chunk := range in { // loop through all the given chunks
 
-		filtered := Chunk{ // create a new empty chunk
+		filtered := utils.Chunk{ // create a new empty chunk
 			Index: chunk.Index,
 			Lines: make([]string, 0, len(chunk.Lines)),
 		}
@@ -276,13 +114,37 @@ func filterRangeWorker(filterRanges []*rangeFilter, invFilterRanges []*rangeFilt
 // workerCount - how many threads (workers) should be created
 // in - input stream of the chunks to be filtered
 func startFilterRange(
-	r []*rangeFilter,
-	rInv []*rangeFilter,
+	rangeFilterArg []string,
+	InvRangeFilterArg []string,
 	workerCount int,
-	in <-chan Chunk,
-) <-chan Chunk {
+	in <-chan utils.Chunk,
+) (<-chan utils.Chunk, error) {
 
-	out := make(chan Chunk) // implement new output channel
+	out := make(chan utils.Chunk) // implement new output channel
+
+	// If range filters are to be applied, prepare them...
+	var lineRanges []*rangeFilter
+	if rangeFilterArg != nil {
+		for _, r := range rangeFilterArg {
+			lineRange, err := utils.NewUint64Range(r)
+			if err != nil {
+				return nil, err
+			}
+			var f = &rangeFilter{rangeF: lineRange}
+			lineRanges = append(lineRanges, f)
+		}
+	}
+	var invLineRanges []*rangeFilter
+	if InvRangeFilterArg != nil {
+		for _, r := range InvRangeFilterArg {
+			lineRange, err := utils.NewUint64Range(r)
+			if err != nil {
+				return nil, err
+			}
+			var f = &rangeFilter{rangeF: lineRange}
+			invLineRanges = append(invLineRanges, f)
+		}
+	}
 
 	var wg sync.WaitGroup // wait until the threads are finished
 
@@ -294,8 +156,8 @@ func startFilterRange(
 			defer wg.Done() // signal know that the thread is finished
 
 			filterRangeWorker( // worker function
-				r,
-				rInv,
+				lineRanges,
+				invLineRanges,
 				in,
 				out,
 			)
@@ -307,7 +169,7 @@ func startFilterRange(
 		close(out)
 	}()
 
-	return out // return new channel
+	return out, nil // return new channel
 }
 
 // filterMaskWorker processes chunks and applies mask-based filtering.
@@ -333,17 +195,17 @@ func startFilterRange(
 // in       - input chunk stream
 // out      - output chunk stream
 func filterMaskWorker(
-	msks []*maskFilter,
-	invMasks []*maskFilter,
-	in <-chan Chunk,
-	out chan<- Chunk,
+	masksFilter []*maskFilter,
+	invMasksFilter []*maskFilter,
+	in <-chan utils.Chunk,
+	out chan<- utils.Chunk,
 ) {
 
 	// Process all incoming chunks
 	for chunk := range in {
 
 		// Create a new chunk for filtered results
-		filtered := Chunk{
+		filtered := utils.Chunk{
 			Index: chunk.Index,
 			Lines: make([]string, 0, len(chunk.Lines)),
 		}
@@ -357,11 +219,11 @@ func filterMaskWorker(
 
 			// If no keep filters exist,
 			// every line is accepted by default.
-			keep := len(msks) == 0
+			keep := len(masksFilter) == 0
 
 			// Check whether the line matches
 			// at least one keep filter.
-			for _, m := range msks {
+			for _, m := range masksFilter {
 
 				if m.keepMask(line) {
 
@@ -387,7 +249,7 @@ func filterMaskWorker(
 
 			// Check whether the line matches
 			// any remove filter.
-			for _, m := range invMasks {
+			for _, m := range invMasksFilter {
 
 				if m.keepMask(line) {
 
@@ -422,8 +284,32 @@ func filterMaskWorker(
 // msk - processed mask arg for filtering
 // workerCount - how many threads (workers) should be created
 // in - the chunks to be filtered
-func startFilterMask(msks []*maskFilter, mskInv []*maskFilter, workerCount int, in <-chan Chunk) <-chan Chunk {
-	out := make(chan Chunk) // implement new output channel
+func startFilterMask(maskFilterArg []string, invMaskFilterArg []string, workerCount int, in <-chan utils.Chunk) (<-chan utils.Chunk, error) {
+	out := make(chan utils.Chunk) // implement new output channel
+
+	// If mask filters are to be applied, prepare them...
+	var maskFilters []*maskFilter
+	if maskFilterArg != nil {
+		for _, m := range maskFilterArg {
+			msk, err := generator.NewMaskInterpreter(m)
+			if err != nil {
+				return nil, err
+			}
+			var f = &maskFilter{maskF: msk}
+			maskFilters = append(maskFilters, f)
+		}
+	}
+	var invMaskFilters []*maskFilter
+	if invMaskFilterArg != nil {
+		for _, m := range invMaskFilterArg {
+			msk, err := generator.NewMaskInterpreter(m)
+			if err != nil {
+				return nil, err
+			}
+			var f = &maskFilter{maskF: msk}
+			invMaskFilters = append(invMaskFilters, f)
+		}
+	}
 
 	var wg sync.WaitGroup // wait until the threads are finished
 
@@ -434,8 +320,8 @@ func startFilterMask(msks []*maskFilter, mskInv []*maskFilter, workerCount int, 
 			defer wg.Done() // signal know that the thread is finished
 
 			filterMaskWorker( // worker function
-				msks,
-				mskInv,
+				maskFilters,
+				invMaskFilters,
 				in,
 				out,
 			)
@@ -446,15 +332,7 @@ func startFilterMask(msks []*maskFilter, mskInv []*maskFilter, workerCount int, 
 		close(out)
 	}()
 
-	return out // return new channel
-}
-
-func filterSubstringsWorker() {
-
-}
-
-func startFilterSubstrings() {
-
+	return out, nil // return new channel
 }
 
 // regexFilterWorker processes chunks and applies regex-based filtering.
@@ -482,15 +360,15 @@ func startFilterSubstrings() {
 func regexFilterWorker(
 	re []*regExFilter,
 	reInve []*regExFilter,
-	in <-chan Chunk,
-	out chan<- Chunk,
+	in <-chan utils.Chunk,
+	out chan<- utils.Chunk,
 ) {
 
 	// Process all incoming chunks
 	for chunk := range in {
 
 		// Create a new chunk for filtered results
-		filtered := Chunk{
+		filtered := utils.Chunk{
 			Index: chunk.Index,
 			Lines: make([]string, 0, len(chunk.Lines)),
 		}
@@ -564,14 +442,39 @@ func regexFilterWorker(
 		out <- filtered
 	}
 }
-func startRegexFilter(
-	re []*regExFilter,
-	reInv []*regExFilter,
-	workerCount int,
-	in <-chan Chunk,
-) <-chan Chunk {
 
-	out := make(chan Chunk)
+func startRegexFilter(
+	reFilterArg []string,
+	reInvFilterArg []string,
+	workerCount int,
+	in <-chan utils.Chunk,
+) (<-chan utils.Chunk, error) {
+
+	out := make(chan utils.Chunk)
+
+	// if regex filters are applied
+	var regExFilters []*regExFilter
+	if reFilterArg != nil {
+		for _, x := range reFilterArg {
+			regEx, err := regexp.Compile(x)
+			if err != nil {
+				return nil, err
+			}
+			var f = &regExFilter{regEx: regEx}
+			regExFilters = append(regExFilters, f)
+		}
+	}
+	var invRegExFilters []*regExFilter
+	if reInvFilterArg != nil {
+		for _, x := range reInvFilterArg {
+			regEx, err := regexp.Compile(x)
+			if err != nil {
+				return nil, err
+			}
+			var f = &regExFilter{regEx: regEx}
+			invRegExFilters = append(invRegExFilters, f)
+		}
+	}
 
 	var wg sync.WaitGroup
 
@@ -583,8 +486,8 @@ func startRegexFilter(
 			defer wg.Done()
 
 			regexFilterWorker(
-				re,
-				reInv,
+				regExFilters,
+				invRegExFilters,
 				in,
 				out,
 			)
@@ -596,7 +499,7 @@ func startRegexFilter(
 		close(out)
 	}()
 
-	return out
+	return out, nil
 }
 
 // externalSortWorker receives chunks from the input channel,
@@ -618,7 +521,7 @@ func startRegexFilter(
 //
 //	tempChunk{Path: "..."}
 func externalSortWorker(
-	in <-chan Chunk,
+	in <-chan utils.Chunk,
 	out chan<- tempRun,
 ) {
 
@@ -700,11 +603,11 @@ func startExternalSort(
 	workerCount int,
 	chunkSize uint32,
 	removeDuplicates bool,
-	in <-chan Chunk,
-) <-chan Chunk {
+	in <-chan utils.Chunk,
+) <-chan utils.Chunk {
 
 	// Output channel containing the final merged chunks.
-	out := make(chan Chunk)
+	out := make(chan utils.Chunk)
 
 	go func() {
 
@@ -778,8 +681,8 @@ func startExternalSort(
 
 func filterWordlistWorker(
 	wordlists []string,
-	in <-chan Chunk,
-	out chan<- Chunk,
+	in <-chan utils.Chunk,
+	out chan<- utils.Chunk,
 ) error {
 
 	// TODO:
@@ -792,10 +695,10 @@ func filterWordlistWorker(
 
 func startFilterWordlist(
 	wordlists []string,
-	in <-chan Chunk,
-) <-chan Chunk {
+	in <-chan utils.Chunk,
+) <-chan utils.Chunk {
 
-	out := make(chan Chunk)
+	out := make(chan utils.Chunk)
 
 	go func() {
 
@@ -876,80 +779,6 @@ func EditWordlist(
 	}
 	// OUTPUT VALIDATION END ------------------------------------------------
 
-	// If range filters are to be applied, prepare them...
-	var lineRanges []*rangeFilter
-	if filterRangeArg != nil {
-		for _, r := range filterRangeArg {
-			lineRange, err := utils.NewUint64Range(r)
-			if err != nil {
-				return err
-			}
-			var f = &rangeFilter{rangeF: lineRange}
-			lineRanges = append(lineRanges, f)
-		}
-	}
-	var invLineRanges []*rangeFilter
-	if invRangeArg != nil {
-		for _, r := range invRangeArg {
-			lineRange, err := utils.NewUint64Range(r)
-			if err != nil {
-				return err
-			}
-			var f = &rangeFilter{rangeF: lineRange}
-			invLineRanges = append(invLineRanges, f)
-		}
-	}
-
-	// If mask filters are to be applied, prepare them...
-	var maskFilters []*maskFilter
-	if filterMaskArg != nil {
-		for _, m := range filterMaskArg {
-			msk, err := generator.NewMaskInterpreter(m)
-			if err != nil {
-				return err
-			}
-			var f = &maskFilter{maskF: msk}
-			maskFilters = append(maskFilters, f)
-		}
-	}
-	var invMaskFilters []*maskFilter
-	if invMaskArg != nil {
-		for _, m := range invMaskArg {
-			msk, err := generator.NewMaskInterpreter(m)
-			if err != nil {
-				return err
-			}
-			var f = &maskFilter{maskF: msk}
-			invMaskFilters = append(invMaskFilters, f)
-		}
-	}
-
-	// if regex filters are applied
-	var regExFilters []*regExFilter
-	if filterRegExArg != nil {
-		for _, x := range filterRegExArg {
-			regEx, err := regexp.Compile(x)
-			if err != nil {
-				return err
-			}
-			var f = &regExFilter{regEx: regEx}
-			regExFilters = append(regExFilters, f)
-		}
-	}
-	var invRegExFilters []*regExFilter
-	if invRegexArg != nil {
-		for _, x := range invRegexArg {
-			regEx, err := regexp.Compile(x)
-			if err != nil {
-				return err
-			}
-			var f = &regExFilter{regEx: regEx}
-			invRegExFilters = append(invRegExFilters, f)
-		}
-	}
-
-	// prepare here more filters
-
 	// loading chunk size from config file
 	cfgPath, err := utils.GetConfigPath()
 	if err != nil {
@@ -966,50 +795,51 @@ func EditWordlist(
 
 	var threads int = runtime.NumCPU() * 4
 
-	current := startReader( // channel who get read and changed
+	current := utils.StartReader( // channel who get read and changed
 		input,
 		cfg.General.ChunkByteSize,
 		cfg.General.ByteLineLimit,
 	)
 
-	// DEBUG
-	// fmt.Println("lineRanges:", len(lineRanges))
-	// fmt.Println("invLineRanges:", len(invLineRanges))
-	// fmt.Println("maskFilters:", len(maskFilters))
-	// fmt.Println("invMaskFilters:", len(invMaskFilters))
-	// fmt.Println("regExFilters:", len(regExFilters))
-	// fmt.Println("invRegExFilters:", len(invRegExFilters))
-
-	if lineRanges != nil || invLineRanges != nil {
+	if filterRangeArg != nil || invRangeArg != nil {
 
 		if !muteStatusMessages {
 			output.PrintStatus("statusEditor", "rangeFilter")
 		}
 
-		current = startFilterRange(
-			lineRanges,
-			invLineRanges,
+		current, err = startFilterRange(
+			filterRangeArg,
+			invRangeArg,
 			threads,
 			current,
 		)
+		if err != nil {
+			return err
+		}
 
 	}
 
-	if maskFilters != nil || invMaskFilters != nil {
+	if filterMaskArg != nil || invMaskArg != nil {
 
 		if !muteStatusMessages {
 			output.PrintStatus("statusEditor", "maskFilter")
 		}
-		current = startFilterMask(maskFilters, invMaskFilters, threads, current)
+		current, err = startFilterMask(filterMaskArg, invMaskArg, threads, current)
+		if err != nil {
+			return err
+		}
 
 	}
 
-	if regExFilters != nil || invRegExFilters != nil {
+	if filterRegExArg != nil || invRegexArg != nil {
 
 		if !muteStatusMessages {
 			output.PrintStatus("statusEditor", "regExFilter")
 		}
-		current = startRegexFilter(regExFilters, invRegExFilters, threads, current)
+		current, err = startRegexFilter(filterRegExArg, invRegexArg, threads, current)
+		if err != nil {
+			return err
+		}
 	}
 
 	if sortArg || removeDuplicatesArg {
@@ -1026,7 +856,7 @@ func EditWordlist(
 		output.PrintStatus("statusEditor", "writeWordlist", statusOutputPath)
 	}
 
-	return writeChunks(
+	return utils.WriteChunks(
 		outputWriter,
 		current,
 	)

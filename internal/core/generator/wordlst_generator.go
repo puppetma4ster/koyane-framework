@@ -428,6 +428,12 @@ func permutationWorker(
 	}
 }
 
+func GenerateWordlist(maskArg []string, permutationArg []string, hcPotExtractArg []string, outputPathArg string,
+	minLenArg int, maxLenArg int, quietArg bool, stdoutArg bool) error {
+
+	return nil
+}
+
 // productWriter generates all combinations from segmentSets and writes each to the writer.
 // This is a memory-efficient, iterative alternative to recursive generation.
 func productWriter(segmentSets [][]string, writer *bufio.Writer) error {
