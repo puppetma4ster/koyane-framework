@@ -722,7 +722,7 @@ func startFilterWordlist(
 func EditWordlist(
 	inputPath string, outputPath string, muteStatusMessages bool,
 	filterRangeArg []string, invRangeArg []string, // range filter args
-	filterMaskArg []string, invMaskArg []string,   //
+	filterMaskArg []string, invMaskArg []string, //
 	filterRegExArg []string, invRegexArg []string,
 	filterSubtractWordlistsArg []string, sortArg bool,
 	removeDuplicatesArg bool,

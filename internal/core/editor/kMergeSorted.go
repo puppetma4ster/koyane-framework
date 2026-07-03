@@ -3,8 +3,8 @@ package editor
 import (
 	"bufio"
 	"container/heap"
-	"os"
 	"github.com/puppetma4ster/koyane-framework/internal/core/utils"
+	"os"
 )
 
 // fileLine represents a single line read from a temporary

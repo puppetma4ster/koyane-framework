@@ -160,21 +160,18 @@ func WriteChunks(output io.Writer, in <-chan Chunk) error {
 	// TODO: IMPLEMENT FILE SPLITTING IN SEPARATE FILES
 	writer := bufio.NewWriter(output) // Create the Writer
 
-	for chunk := range in { // loop through all chunks
+	for chunk := range in {
 
-		for _, line := range chunk.Lines { // loop through all chunk lines
+		for _, line := range chunk.Lines {
 
-			_, err := writer.WriteString( // Write a line with a line break
-				line + "\n",
-			)
-
-			if err != nil {
+			if _, err := writer.WriteString(line + "\n"); err != nil {
 				return err
 			}
 		}
-	}
-	if err := writer.Flush(); err != nil { // if errors occurred during the writing process
-		return err
+
+		if err := writer.Flush(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
