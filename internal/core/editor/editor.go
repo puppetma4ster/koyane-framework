@@ -2,7 +2,6 @@ package editor
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -66,15 +65,11 @@ func filterRangeWorker(filterRanges []*rangeFilter, invFilterRanges []*rangeFilt
 
 		for _, line := range chunk.Lines {
 			l := uint64(utf8.RuneCountInString(line))
-			fmt.Printf("line=%q len=%d\n", line, l)
+			//fmt.Printf("line=%q len=%d\n", line, l)
 			// Keep filter (-r)
 			keep := len(filterRanges) == 0
 
 			for _, r := range filterRanges {
-				fmt.Printf(
-					"match=%v\n",
-					r.keepRange(l),
-				)
 				if r.keepRange(l) {
 					keep = true
 					break

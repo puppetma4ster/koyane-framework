@@ -123,7 +123,7 @@ var GenerateRootHelpTexts = map[string]string{
 }
 
 func PrintBanner() {
-	figure.NewFigure("KOYANE-FRAMEWORK", "doom", true).Print()
+	figure.NewFigure("KOYANE\nFRAMEWORK", "doom", true).Print()
 	fmt.Println("Koyane-Framework :: wordlist forge & analysis toolkit")
 	fmt.Println("made by Puppetm4ster")
 	fmt.Println("\n\n\n")
