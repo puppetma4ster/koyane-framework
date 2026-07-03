@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"container/heap"
 	"os"
+	"github.com/puppetma4ster/koyane-framework/internal/core/utils"
 )
 
 // fileLine represents a single line read from a temporary
@@ -83,7 +84,7 @@ func (h *lineHeap) Pop() any {
 func mergeSortedChunks(
 	paths []string,
 	chunkSize int,
-	out chan<- Chunk,
+	out chan<- utils.Chunk,
 	removeDuplicates bool,
 ) error {
 
@@ -149,7 +150,7 @@ func mergeSortedChunks(
 	//
 	// Lines are collected here until chunkSize is reached,
 	// then the chunk is emitted through the output channel.
-	chunk := Chunk{
+	chunk := utils.Chunk{
 		Index: 0,
 		Lines: make(
 			[]string,
@@ -202,7 +203,7 @@ func mergeSortedChunks(
 
 			out <- chunk
 
-			chunk = Chunk{
+			chunk = utils.Chunk{
 				Index: chunk.Index + 1,
 				Lines: make(
 					[]string,
